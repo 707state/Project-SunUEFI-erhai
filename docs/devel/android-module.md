@@ -1,6 +1,8 @@
 # Android 引导助手
 
-SunUEFI 引导助手在 Android 中安装和维护合体 BOOT，提供 Android／UEFI 启动选择及独立存储管理。0.4 模块既支持从当前原厂 BOOT 安装，也支持更新已有 SunUEFI 核心；Android 内核始终取自设备当前 BOOT，安装引导不自动分区。
+SunUEFI 引导助手在 Android 中安装和维护合体 BOOT，提供 Android／UEFI 启动选择及独立存储管理。0.5 模块既支持从当前原厂 BOOT 安装，也支持更新已有 SunUEFI 核心；Android 内核始终取自设备当前 BOOT，安装引导不自动分区。
+
+普通安装步骤见[安装指南](../user/install-from-artifact.md)。本页说明引导助手的行为和实现。
 
 ## 使用
 

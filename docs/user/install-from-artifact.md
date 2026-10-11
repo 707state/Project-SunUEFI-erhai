@@ -1,68 +1,48 @@
-# 下载包中的安装入口
+# 安装指南
 
-默认 GitHub Actions 的 **Build products** 提供三项下载：
+推荐在平板上的 **SunUEFI 引导助手** 中完成安装，不需要填写序列号或运行电脑命令。
 
-| 下载 | 内容 |
-| --- | --- |
-| `SunUEFI-Android-Module-提交号` | 引导助手模块 ZIP |
-| `SunUEFI-ESP-提交号` | ESP 镜像、固件和 `install.sh`／`install.cmd` 一键安装脚本 |
-| `SunUEFI-Root-提交号` | `bundle/root.ext4.img`，完整 Debian / GNOME 根系统 |
+## 准备安装包
 
-将 ESP 与 Root 包解压到同一目录，合并 `bundle/`。安装脚本旁边应同时有 `bundle/esp.img` 和 `bundle/root.ext4.img`。不需要克隆仓库。手动选择 `uefi` 或 `linux` 构建只生成对应开发产物，不提供完整系统。
+平板需要解锁 Bootloader，并已安装 KernelSU／SukiSU。安装前备份重要数据。
 
-构建日志在另一个 `piano-build-records-目标-提交号` 里。
+从 [Build products](https://github.com/slwyts/Project-SunUEFI/actions/workflows/build-products.yml) 的完整构建下载同一版本的三个包：
 
-## 需要什么
+| 下载包 | 解压后使用的文件 | 用途 |
+| --- | --- | --- |
+| `SunUEFI-Android-Module-提交号` | `SunUEFI-Piano-版本.zip` | 引导助手模块 |
+| `SunUEFI-ESP-提交号` | `bundle/esp.img` | 启动镜像 |
+| `SunUEFI-Root-提交号` | `bundle/root.ext4.img` | Linux 系统镜像 |
 
-* 电脑：Python 3.10+，Android platform-tools（`adb`、`fastboot` 在 PATH 中）。可以用 `SUNUEFI_PYTHON` 指定 Python。
-* 平板：已解锁 Bootloader、已 root、开启 USB 调试，进入 Android。
-* 平板里已有 `sunuefi_esp` 和 `sunuefi_root` 两个分区。安装器不能给全新平板分区，会返回 `NEW_INSTALL_NOT_READY`。
+将模块 ZIP 和两个 `.img` 文件保存在平板上。模块 ZIP 不要再解压；两个镜像可以放在任意方便的位置，之后通过文件选择器选取。手动选择 `uefi` 或 `linux` 的开发构建不包含完整系统。
 
-## 步骤
+## 1. 安装引导助手
 
-先用 `adb devices -l` 找到 Android 下的序列号（不是 `SunUEFI-piano`）。以下三条命令只读取，不写入：
+在 KernelSU／SukiSU 的模块页面选择模块 ZIP。安装提示出现时：
 
-```sh
-sh install.sh inspect --serial 序列号 --output inspect.json
-sh install.sh plan --serial 序列号 --output update-plan.json
-sh install.sh apply --serial 序列号 --plan update-plan.json
-```
+* **音量＋**：安装或更新引导，保留当前 Android 内核。
+* **音量－**：只安装助手，可以稍后在 **维护 → 重新安装引导** 中安装引导。
 
-Windows 把 `sh install.sh` 换成 `install.cmd`。安装器自动使用旁边合并好的 `bundle/`。
+已有相同版本引导时自动跳过。安装完成后正常重启，在模块卡片上点击 **打开 WebUI**。官方 Magisk 需要 MMRL 等支持 WebUI 的管理器，见[模块说明](../devel/android-module.md)。
 
-确认计划后，加上 `--execute` 才会写入：
+## 2. 创建独立存储分区
 
-```sh
-sh install.sh apply --serial 序列号 --plan update-plan.json --execute
-```
+打开 **存储** 页，点击 **创建独立分区**，选择分配给新系统的容量并确认。完成后正常重启一次，再打开助手。已有独立分区时跳过这一步。
 
-## 可选：启用 SSH 登录
+首次分区尚未完成实机验证，见[已知问题](known-issues.md#首次分区)。
 
-如果希望从电脑远程管理 Linux，可以在安装时提供自己的 SSH **公钥**。安装器会把它加入平板的 `root` 和 `piano` 账户；不提供公钥也可以正常进入桌面。
+## 3. 安装系统镜像
 
-创建安装计划和执行安装时，需要指定同一个 `.pub` 文件：
+在 **存储** 页的 **安装或更新系统** 中，分别选择 `esp.img` 和 `root.ext4.img`，点击 **安装所选镜像**，确认后等待完成。刷写会覆盖独立分区中原有的系统和文件。
 
-```sh
-sh install.sh plan --serial 序列号 --ssh-public-key ~/.ssh/id_ed25519.pub --output update-plan.json
-sh install.sh apply --serial 序列号 --plan update-plan.json --ssh-public-key ~/.ssh/id_ed25519.pub --execute
-```
+## 4. 启动 Linux
 
-这项功能需要 Linux 电脑上的 `e2fsprogs` 和 GNU `coreutils`。Windows 使用 `install.cmd`，并在默认 WSL 发行版中安装这两个软件包。请只提供公钥，私钥始终留在自己的电脑上；发布镜像不包含任何人的登录密钥。
+在 **启动** 页选择 **UEFI**，选择 **Linux**，点击 **保存并重启**。以后普通开机会沿用这个选择，也可以在开机选择页临时选择 Android。
 
-## 它会做什么
+Linux 默认用户名为 `piano`，密码为 `piano123456`，桌面自动登录。首次启动通常需要一到两分钟。
 
-安装器核对 GPT、设备身份、分区容量和镜像哈希，只更新 `sunuefi_esp` 和 `sunuefi_root`，然后回到 Android 读回检查。当前 Linux 在启动时自动读取本机蓝牙地址，不需要安装器预先修改 ESP。
+## 后续更新
 
-使用没有自动地址初始化的旧系统时，可以单独补上设备树地址。当前系统无需这一步：
-
-```sh
-sh install.sh provision-bluetooth --serial 序列号
-sh install.sh provision-bluetooth --serial 序列号 --execute --output device-provision.json
-```
-
-## 不做什么
-
-* 不给新平板分区、不缩小 userdata。
-* 不写 BOOT 分区。合体 BOOT 需要另外生成和写入，见[原生 BOOT 重打包](../devel/android-boot-repack.md)。
-* 不支持 `--recovery`，会被拒绝，原因见[返回 Android](recovery.md)。
-* 出现问题时的退路见[返回 Android 与故障恢复](recovery.md)。
+* **更新 Linux**：在存储页选择新版 ESP 和 root 镜像，再安装一次。root 镜像会覆盖原有 Linux 文件，更新前备份自己的数据。
+* **HyperOS 更新后恢复引导**：在维护页点击 **重新安装引导**。
+* **安装或启动遇到问题**：查看[故障恢复](recovery.md)，必要时使用[备用电脑安装](install-from-computer.md)。

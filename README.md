@@ -2,7 +2,9 @@
 
 小米平板 8 Pro（代号 `piano`，骁龙 8 至尊版 / SM8750）的统一 UEFI 与 Linux 适配项目。
 
-平板的原厂 Android 基本保持不动。SunUEFI 在它旁边加入一套 UEFI（EDK2），与原厂内核共用同一个 BOOT 镜像（原厂 ABL 在 recovery 自带内核时不会加载 pvmfw、导致 Recovery 无法启动，替换 BOOT 内核又会让 HyperOS 起不来；所以内核留在原位，只把入口分支改向一个小选择器，选择器和 UEFI 接在内核之后，由 ABL 按 header 的 kernel_size 整段加载，普通启动与 Recovery 跳回原厂入口、只有请求 UEFI 时才进 EDK2），让同一块平板可以从内部存储直接启动其他系统（如 Debian），同时保留原厂 Android 的日常启动与 Recovery；Linux 已经能体验近乎完美，Windows 还在计划之中
+目标是让这块平板通过 UEFI 获得完整的 Linux 和 Windows 体验，同时保留原厂 Android。现在已经可以从内部存储运行 Debian / GNOME，并在 Android 与 Linux 之间切换；Windows 尚未实现。
+
+[开始使用](#开始使用) · [功能与已知问题](#功能与已知问题) · [故障恢复](docs/user/recovery.md)
 
 ## 现在能做什么
 
@@ -33,9 +35,25 @@
 
 两张均为原版 Minecraft 26.3，无优化模组，在平板 3K 屏幕上运行。照片分别显示约 446 FPS 和 174 FPS，为不同场景的瞬时读数。Vulkan 的分辨率显示差异可能与驱动 bug 或 Wayland 缩放有关。
 
+## 开始使用
+
+准备一台已解锁 Bootloader、已安装 KernelSU／SukiSU 的小米平板 8 Pro，并备份重要数据。日常安装在平板上的 **SunUEFI 引导助手** 中完成，无需电脑命令或填写序列号。
+
+1. **下载三个包**：从 [Build products](https://github.com/slwyts/Project-SunUEFI/actions/workflows/build-products.yml) 的完整构建下载引导助手、ESP 和 Root。解压后得到模块 ZIP、`esp.img`（启动镜像）和 `root.ext4.img`（系统镜像）。
+2. **安装并打开助手**：在模块管理器中安装模块 ZIP，提示出现时按音量＋安装引导；重启后，点击模块卡片上的 **打开 WebUI**。
+3. **分配存储空间**：在 **存储 → 创建独立分区** 中选择容量并确认，完成后重启。已有独立分区时跳过这一步。
+4. **刷写镜像**：在 **存储** 页分别选择下载好的 `esp.img` 和 `root.ext4.img`，点击 **安装所选镜像**，等待完成。
+5. **进入 Linux**：在 **启动** 页选择 **UEFI → Linux**，点击 **保存并重启**。
+
+首次分区尚未完成实机验证，相关限制见[已知问题](docs/user/known-issues.md#首次分区)。详细操作见[安装指南](docs/user/install-from-artifact.md)；[电脑安装](docs/user/install-from-computer.md)与[临时启动](docs/user/temporary-boot.md)作为备用方式保留。Magisk 用户打开助手的方法见[模块说明](docs/devel/android-module.md)。
+
+Linux 默认用户名为 `piano`，密码为 `piano123456`，桌面自动登录。首次进入桌面通常需要一到两分钟。
+
+HyperOS 更新后，在助手的 **维护** 页点击 **重新安装引导**。想回 Android，可以在开机选择页按音量＋选择 Android、短按电源确认；Linux 下也可运行 `piano-next-boot android --reboot`。遇到无法启动的情况，见[故障恢复](docs/user/recovery.md)。
+
 ## 开机时发生什么
 
-平板最早的启动阶段仍由小米原厂的引导程序（XBL 和 ABL）完成，我们没有替换它们。SunUEFI 放进的是 Android 的 BOOT 分区：在原厂 Android 内核前面加一个很小的“选择器”，再把同一份 SunUEFI 核心附在后面。这个组合叫**合体 BOOT**。
+SunUEFI 把开机选择器、原厂 Android 内核和 UEFI 核心放在同一个启动镜像里，称为**合体 BOOT**。开机时选择 Android 就进入 HyperOS；选择 UEFI 可以启动 Linux 或进入固件菜单。小米原厂的底层引导程序和 Recovery 保留。
 
 ```mermaid
 flowchart LR
@@ -48,17 +66,17 @@ flowchart LR
     D -.->|"目标，尚未实现"| H["Windows"]
 ```
 
-选择器先显示 Android／UEFI 开机选择页，倒计时约三秒后沿用保存的路线。Android 路线直接把控制权交给原厂内核，不会先运行 UEFI；Linux 或菜单路线才进入完整的 UEFI。Linux 的内核放在一个小的 FAT32 分区 `sunuefi_esp` 中（ESP，EFI 系统分区，UEFI 约定存放启动文件的分区），系统和应用放在单独的 ext4 分区 `sunuefi_root`，所以不需要每次把整个桌面解压到内存。
+开机选择页停留约三秒，音量键切换，短按电源确认；没有操作时沿用保存的选择。Android 路线直接进入原厂内核，Linux 路线由 UEFI 从独立存储分区加载系统。实现细节见[合体 BOOT](docs/devel/android-boot-repack.md)。
 
 ### 启动路线会被记住
 
-选择保存在合体 BOOT 自己的一小块记录区里，由项目工具读写，不依赖 PMIC 寄存器。普通重启会沿用上一次的选择；没有有效记录时默认进入 Android。目前已经能用的是：
+在助手中保存的选择会成为默认启动路线；开机时用音量键临时改选，不会改变这个默认值。首次安装默认进入 Android。
 
 * 在 Android 的 SunUEFI 引导助手中选择 Android 或 UEFI，保存并重启；已安装 Linux 时可以直接进入 Linux。
 * 在 Linux 里执行 `piano-next-boot android --reboot` 回到 Android。
 * 用 Android 标准的 `reboot recovery` 进入小米原厂 Recovery，不改动已保存的路线。
 
-引导助手提供中文／英文 WebUI 和系统更新后重新安装引导的入口：使用当前 HyperOS 的内核重新打包，保留启动选择。它尚未自动接管 OTA；自动记住 UEFI 菜单里的每次选择和一次性请求也没有完成。使用方法见 [Android 引导助手](docs/devel/android-module.md)，底层实现见[启动状态与切换](docs/devel/reboot-request.md)和[Linux 下次启动入口](docs/devel/linux-next-boot.md)。
+引导助手提供中文／英文界面。HyperOS 更新后，点击 **重新安装引导** 即可使用新系统的内核恢复引导，保留启动选择；目前需要手动点击。使用方法见[模块说明](docs/devel/android-module.md)，底层实现见[启动状态与切换](docs/devel/reboot-request.md)。
 
 ### UEFI 里的 Fastboot
 
@@ -113,7 +131,7 @@ Linux 默认用户名：`piano`，密码：`piano123456`。桌面自动登录，
 | 传感器 | 加速度、光线、罗盘、距离等数据可读，并接入标准的 SensorProxy | 自动旋转、自动亮度曲线等桌面联动还在完善；陀螺仪等数据的单位和标准接口未全部完成 |
 | 电源 | 充电状态、基础 PD 充电 | 关机偶尔回到 Android，原因未知；合盖和电源键目前只处理背光 |
 | 启动时间 | 能从内部 ext4 启动到桌面 | 通常需要一到两分钟，启动过程中可能灰屏或白屏、没有进度提示；首次启动可能更久 |
-| UEFI 菜单 / Setup / Shell | SimpleInit 中文菜单可显示、可操作，能进入标准 Setup | Setup 当前字号过小、侧键输入待修；UEFI 阶段触屏和键盘尚未接通 |
+| UEFI 菜单 / 固件设置 | SimpleInit 中文菜单可显示、可操作，能进入 TianoCore 设置 | 设置页的布局和输入仍在完善；UEFI 阶段触屏和键盘尚未接通 |
 | UEFI Fastboot | 日志、截图、只读读取 | 冷启动 USB 初始化曾超时，部分后台场景未走通 |
 | 闪光灯 / RGB 灯 / 红外 | 闪光灯的标准 LED 接口已注册；RGB 灯接口已出现 | 闪光灯实际发光未观察；红外发射未验证 |
 
@@ -126,50 +144,6 @@ Linux 默认用户名：`piano`，密码：`piano123456`。桌面自动登录，
 * **Windows / WinPE**：目标，尚未启动。
 
 更详细的现状和设备记录见[项目状态](docs/status.md)，用户可见的问题和绕过办法见[已知问题](docs/user/known-issues.md)。
-
-## 开始使用
-
-目前没有公开的 Release 下载页。构建产物来自 GitHub Actions 的 **Build products** 工作流，你也可以自己构建。固件和原厂提取材料的再分发许可还在核对，核对完成前不会提供二进制 Release。
-
-### 你需要
-
-* 小米平板 8 Pro，Bootloader 已解锁，Android 已 root 并开启 USB 调试。
-* 电脑安装 Python 3.10 或更高版本、Android platform-tools（`adb`、`fastboot`）。
-* 一块已划好 `sunuefi_esp`（512 MiB，FAT32）和 `sunuefi_root`（约 63.5 GiB，ext4）的平板。**全新平板的首次分区还不能由安装器完成。**
-* 先备份个人数据。
-
-### 安装
-
-1. 默认完整构建提供三项下载：`SunUEFI-Android-Module-提交号`、`SunUEFI-ESP-提交号`、`SunUEFI-Root-提交号`。把 ESP 与 Root 两个包解压到同一目录，合并其中的 `bundle/`；ESP 包附带安装脚本。手动选择 `uefi` 或 `linux` 只生成对应开发产物，不含完整系统。
-2. 用 `adb devices -l` 找到平板在 Android 下的序列号，然后运行：
-
-   ```sh
-   sh install.sh inspect --serial 序列号 --output inspect.json
-   sh install.sh plan --serial 序列号 --output update-plan.json
-   sh install.sh apply --serial 序列号 --plan update-plan.json
-   ```
-
-   Windows 把 `sh install.sh` 换成 `install.cmd`。这三条命令只读取和核对，不写入。
-3. 确认计划后加 `--execute` 才会真正更新 ESP 和 root：
-
-   ```sh
-   sh install.sh apply --serial 序列号 --plan update-plan.json --execute
-   ```
-
-安装器的完整说明见[下载包中的安装入口](docs/user/install-from-artifact.md)。
-
-`SunUEFI-Android-Module-提交号` 里面有 **SunUEFI 引导助手 ZIP**。把 ZIP 传到平板，在 SukiSU 的模块页面安装：音量＋安装或更新引导，音量－只装助手；相同核心直接跳过 BOOT 写入。正常重启后点击 **打开 WebUI**，即可选择系统、管理独立存储和维护引导。
-
-模块会从平板当前 BOOT 提取 Android 内核并安装开机选择器；已有 SunUEFI 时保留当前选择并更新核心。它默认进入 Android，不自动分区。HyperOS 更新后，在维护页点击 **重新安装引导**，即可使用更新后的内核重新打包。当前支持的 BOOT 格式和其他管理器的用法见 [Android 引导助手](docs/devel/android-module.md)。Linux 仍需要前面的 ESP／root 安装步骤，模块中的新分区管理尚未完成实机验证。临时体验入口见[快速体验](docs/user/getting-started.md)。
-
-### 回到 Android
-
-* 在 Linux 里运行 `piano-next-boot android --reboot`。
-* 屏幕停在原厂 Fastboot 界面：`fastboot reboot`。
-* 电脑能看到 `SunUEFI-piano`：`fastboot -s SunUEFI-piano reboot`。
-* 完全没有反应：长按电源键强制重启。
-
-更多情况见[返回 Android 与故障恢复](docs/user/recovery.md)。
 
 ## 自己构建
 
@@ -213,7 +187,7 @@ SunUEFI 不是从零重写所有东西。上游源码保持固定版本放在 `u
 
 ## 文档
 
-* [快速体验](docs/user/getting-started.md)、[安装入口](docs/user/install-from-artifact.md)、[返回 Android](docs/user/recovery.md)、[UEFI Fastboot](docs/user/fastboot.md)、[已知问题](docs/user/known-issues.md)
+* [快速上手](docs/user/getting-started.md)、[安装指南](docs/user/install-from-artifact.md)、[返回 Android](docs/user/recovery.md)、[UEFI Fastboot](docs/user/fastboot.md)、[已知问题](docs/user/known-issues.md)
 * [项目状态](docs/status.md)：功能和设备记录
 * [文档导航](docs/README.md)：开发、专题和历史记录
 * [第三方来源](THIRD_PARTY.md)、[许可](LICENSE.md)、[贡献指南](CONTRIBUTING.md)、[AI 协作规范](AGENTS.md)

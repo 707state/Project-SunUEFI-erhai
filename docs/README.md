@@ -4,8 +4,9 @@
 
 ## 使用
 
-* [快速上手](user/getting-started.md)：用 `fastboot boot` 临时体验
-* [下载包中的安装入口](user/install-from-artifact.md)：用安装器更新平板
+* [快速上手](user/getting-started.md)
+* [安装指南](user/install-from-artifact.md)：用引导助手分区、安装镜像并选择系统
+* 备用方式：[电脑安装](user/install-from-computer.md)、[临时启动固件](user/temporary-boot.md)
 * [返回 Android 与故障恢复](user/recovery.md)
 * [UEFI Fastboot](user/fastboot.md)
 * [已知问题](user/known-issues.md)
