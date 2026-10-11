@@ -245,6 +245,8 @@ def package_installed(args):
     entries['policy.json'] = (json.dumps(policy, indent=2) + '\n').encode()
     entries['installed-core.json'] = (json.dumps(descriptor, indent=2) + '\n').encode()
     entries['licenses/COPYING.libmd'] = read_file(ROOT / 'upstream/simple-init/libs/libmd/COPYING')
+    entries['licenses/OFL.PianoSetupFont.txt'] = read_file(
+        ROOT / 'uefi/components/product-support/Library/ConsoleScale/OFL.txt')
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'x', zipfile.ZIP_DEFLATED) as archive:

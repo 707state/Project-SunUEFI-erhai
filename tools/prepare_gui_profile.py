@@ -14,6 +14,8 @@ SETUP_FV_MODULES = (
 SETUP_DSC_ADDITIONS = '''
 [PcdsFixedAtBuild]
   gEfiMdeModulePkgTokenSpaceGuid.PcdEmuVariableNvModeEnable|TRUE
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLangCodes|"zh-CN;en-US;en;fr-FR;fr"
+  gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang|"zh-CN"
 [PcdsDynamicDefault]
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|3200
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|2136

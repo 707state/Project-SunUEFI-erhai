@@ -5,6 +5,7 @@
 #include <Uefi.h>
 #include <Protocol/SimpleTextIn.h>
 #include <Protocol/DevicePath.h>
+#include <Guid/ConsoleInDevice.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
@@ -178,6 +179,7 @@ VOID PianoStopKeys (VOID) {
   if(mHandle!=NULL) {
     gBS->DisconnectController(mHandle,NULL,NULL);
     gBS->UninstallMultipleProtocolInterfaces(mHandle,&gEfiSimpleTextInProtocolGuid,&mInput,
+      &gEfiConsoleInDeviceGuid,NULL,
       &gEfiDevicePathProtocolGuid,&mPath,NULL);mHandle=NULL;
   }
   if(mInput.WaitForKey!=NULL) {gBS->CloseEvent(mInput.WaitForKey);mInput.WaitForKey=NULL;}
@@ -196,6 +198,7 @@ EFI_STATUS PianoStopKeysForProduct(PIANO_KEYS_RETIRE_REPORT *Report) {
   if(mHandle!=NULL) {
     Status=Report->Disconnect=gBS->DisconnectController(mHandle,NULL,NULL);if(Status!=EFI_SUCCESS)goto Failed;
     Status=Report->Uninstall=gBS->UninstallMultipleProtocolInterfaces(mHandle,&gEfiSimpleTextInProtocolGuid,&mInput,
+      &gEfiConsoleInDeviceGuid,NULL,
       &gEfiDevicePathProtocolGuid,&mPath,NULL);if(Status!=EFI_SUCCESS)goto Failed;mHandle=NULL;
   }
   if(mInput.WaitForKey!=NULL) {
@@ -223,6 +226,7 @@ EFI_STATUS PianoStartKeys (CONST VOID *Fdt) {
   Status=gBS->CreateEvent(EVT_NOTIFY_WAIT,TPL_NOTIFY,Wait,NULL,&mInput.WaitForKey);
   if(EFI_ERROR(Status))return Status;
   Status=gBS->InstallMultipleProtocolInterfaces(&mHandle,&gEfiSimpleTextInProtocolGuid,&mInput,
+    &gEfiConsoleInDeviceGuid,NULL,
     &gEfiDevicePathProtocolGuid,&mPath,NULL);
   if(EFI_ERROR(Status)) {PianoStopKeys();return Status;}
   Status=gBS->CreateEvent(EVT_TIMER|EVT_NOTIFY_SIGNAL,TPL_CALLBACK,Poll,NULL,&mPoll);

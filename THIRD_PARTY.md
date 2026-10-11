@@ -24,6 +24,7 @@ SunUEFI 站在这些项目之上：EDK2 / Mu-Silicium 提供 UEFI 基础和高�
 | 资源 | 身份与使用 | 通知 / 尚需核对 |
 | --- | --- | --- |
 | Noto CJK | [prepare_simpleinit.py](tools/prepare_simpleinit.py) 提取主机字体的 SC 字面；主机包版本未锁定 | 实际 hash 写入 `source-manifest.json`；字体许可/通知来自取得包。 |
+| Noto Sans CJK SC 设置页字形 | [prepare_product_console.py](tools/prepare_product_console.py) 从 SC 字面生成 16×19 位图，以标准 HII 字体包提供中文 | SIL OFL 1.1；[完整通知](uefi/components/product-support/Library/ConsoleScale/OFL.txt) 随模块和安装包附带，字体与生成数据的 hash 记入产品构建清单。 |
 | Font Awesome | 同一脚本下载 `FortAwesome/Font-Awesome` `5.15.4` 字体 | 记录实际 hash，下载前未锁内容 hash；核对该版本字体通知。 |
 | AOSP bitmap font | [Font.h](uefi/platforms/pianoProbePkg/Library/RamLogSerialPortLib/Font.h) | 文件头已保存 AOSP 版权及源码/二进制分发条款；发布时保留适用通知。 |
 | TianoCore 标志与品牌文字 | [ProductSplashAssets.h](uefi/components/product-support/Library/ProductBootManagerLib/ProductSplashAssets.h) 描述为六辐标志的向量解释 | 保留来源说明，品牌使用范围另核对。 |

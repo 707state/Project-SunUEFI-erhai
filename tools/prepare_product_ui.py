@@ -21,10 +21,35 @@ CDL = BASE + 'MdeModulePkg/Library/CustomizedDisplayLib/'
 SHELL = BASE + 'ShellPkg/Application/Shell/'
 UEFI_LIB = BASE + 'MdePkg/Library/UefiLib/'
 HOOKS = []
+CONSOLE = BASE + 'MdeModulePkg/Universal/Console/GraphicsConsoleDxe/'
 def hook(path, old, new):
     HOOKS.append((path, old, new))
 def include(path, anchor):
     hook(path, anchor, anchor + '#include <Library/PianoProductPumpLib.h>\n')
+hook(CONSOLE+'GraphicsConsole.h',
+     '  EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *LineBuffer;\n',
+     '  EFI_GRAPHICS_OUTPUT_BLT_PIXEL      *LineBuffer;\n  VOID *PianoConsoleSurface;\n')
+hook(CONSOLE+'GraphicsConsole.c', '#include "GraphicsConsole.h"\n',
+     '#include "GraphicsConsole.h"\n#include "PianoConsoleScale.h"\n#include "PianoChineseGlyphs.h"\n')
+hook(CONSOLE+'GraphicsConsole.c', '  (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *)NULL\n};',
+     '  (EFI_GRAPHICS_OUTPUT_BLT_PIXEL *)NULL,\n  NULL\n};')
+hook(CONSOLE+'GraphicsConsole.c',
+     '  DEBUG ((DEBUG_INFO, "GraphicsConsole video resolution %d x %d\\n", HorizontalResolution, VerticalResolution));',
+     '  Status = PianoConsoleAttach (Private, &HorizontalResolution, &VerticalResolution);\n'
+     '  if (EFI_ERROR (Status)) { goto Error; }\n'
+     '  DEBUG ((DEBUG_INFO, "GraphicsConsole video resolution %d x %d\\n", HorizontalResolution, VerticalResolution));')
+hook(CONSOLE+'GraphicsConsole.c', '    // Free private data\n    //\n    FreePool (Private);\n',
+     '    // Free private data\n    //\n    PianoConsoleDetach (Private);\n    FreePool (Private);\n')
+hook(CONSOLE+'GraphicsConsole.c', '    // Free our instance data\n    //\n    FreePool (Private);\n',
+     '    // Free our instance data\n    //\n    PianoConsoleDetach (Private);\n    FreePool (Private);\n')
+hook(CONSOLE+'GraphicsConsole.c',
+     '  PackageLength = sizeof (EFI_HII_SIMPLE_FONT_PACKAGE_HDR) + mNarrowFontSize + 4;',
+     '  PackageLength = sizeof (EFI_HII_SIMPLE_FONT_PACKAGE_HDR) + mNarrowFontSize + sizeof(mPianoWideGlyphs) + 4;')
+hook(CONSOLE+'GraphicsConsole.c',
+     '  CopyMem (Location, gUsStdNarrowGlyphData, mNarrowFontSize);\n',
+     '  CopyMem (Location, gUsStdNarrowGlyphData, mNarrowFontSize);\n'
+     '  SimplifiedFont->NumberOfWideGlyphs = ARRAY_SIZE(mPianoWideGlyphs);\n'
+     '  CopyMem (Location + mNarrowFontSize, mPianoWideGlyphs, sizeof(mPianoWideGlyphs));\n')
 for path, anchor in ((DISPLAY+'FormDisplay.c', '#include "FormDisplay.h"\n'),
                      (DISPLAY+'InputHandler.c', '#include "FormDisplay.h"\n'),
                      (DISPLAY+'Popup.c', '#include "FormDisplay.h"\n'),
@@ -308,6 +333,8 @@ def prepare(root=ROOT, apply=False, check_pins=True):
         actual = subprocess.check_output(['git', '-C', str(root/SI), 'rev-parse', 'HEAD'], text=True).strip()
         if actual != SIMPLEINIT_PIN:
             raise ValueError('unexpected SimpleInit pin')
+    from prepare_product_console import prepare as prepare_console
+    console = prepare_console(root, apply=apply)
     desired, newline = {}, {}
     for relative, old, new in HOOKS:
         path = root/relative
@@ -334,7 +361,7 @@ def prepare(root=ROOT, apply=False, check_pins=True):
             if path.read_bytes()!=value:
                 path.write_bytes(value)
     hashes={str(path.relative_to(root)):hashlib.sha256(value).hexdigest() for path,value in sorted(outputs.items())}
-    return {'pin':PIN,'simpleinit_pin':SIMPLEINIT_PIN,'files':hashes,'sha256':hashlib.sha256(json.dumps(hashes,sort_keys=True).encode()).hexdigest(),
+    return {'pin':PIN,'simpleinit_pin':SIMPLEINIT_PIN,'files':hashes,'sha256':hashlib.sha256(json.dumps(hashes,sort_keys=True).encode()).hexdigest(),'console':console,
             'default_binding':'PianoProductPumpLibNull','product_requires_real_library_override':True}
 
 def main():

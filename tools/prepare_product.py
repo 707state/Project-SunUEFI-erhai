@@ -323,6 +323,7 @@ def core_inf():
   SynchronizationLib
   HobLib
 [Guids]
+  gEfiConsoleInDeviceGuid
   gEfiEventExitBootServicesGuid
   gEfiEventBeforeExitBootServicesGuid
   gEfiFileInfoGuid
