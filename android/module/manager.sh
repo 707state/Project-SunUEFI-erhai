@@ -147,7 +147,14 @@ case "$operation" in
   mkdir -p "$work"
   current=$($repack status --boot-device "$bootdev" --active-slot "$slot" --policy "$policy")
   if echo "$current" | grep -q '"wrapped":true'; then
-   "$repack" adopt --boot-device "$bootdev" --active-slot "$slot" --policy "$policy" --state-output "$state"
+   if ! "$repack" adopt --boot-device "$bootdev" --active-slot "$slot" --policy "$policy" \
+     --state-output "$state" 2>"$work/adopt.log"; then
+    # Assistant-only installation may leave an older core in BOOT. Upgrade
+    # reconstructs and validates that carrier before replacing its UEFI core.
+    "$repack" upgrade --boot-device "$bootdev" --active-slot "$slot" \
+     --policy "$policy" --payload-dir "$MODPATH/payload" \
+     --state-output "$state" --execute
+   fi
   else
    "$repack" probe --boot-device "$bootdev" --active-slot "$slot" \
     --rom-fingerprint "$rom_fingerprint" --boot-fingerprint "$boot_fingerprint" \
@@ -161,6 +168,6 @@ case "$operation" in
     --rom-fingerprint "$rom_fingerprint" --boot-fingerprint "$boot_fingerprint" \
     --policy "$policy" --installed-state "$state" --execute
   fi
-  rm -f "$work/current.json" ;;
+  rm -f "$work/current.json" "$work/adopt.log" ;;
  *) exit 2 ;;
 esac
