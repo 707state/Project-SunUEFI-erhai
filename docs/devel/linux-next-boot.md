@@ -33,7 +33,7 @@ piano-next-boot android --reboot # 保存成功后正常重启
 }
 ```
 
-上面是字段说明，不能直接当有效配置。仓库的`boot-request.example.json`采用null占位，发布镜像不应预填某台测试设备的boot_a。缺配置/分区不存在/generation不同均明确报错，不扫描分区、读current-slot猜测或自动改到另一槽。之后更新合体BOOT时，安装器须同步更新generation。
+上面是字段说明，不能直接当有效配置。仓库的`boot-request.example.json`采用null占位，发布镜像不应预填某台测试设备的boot_a。缺配置或分区不存在时明确报错，不扫描分区或自动改到另一槽。每次操作先读取指定分区中当前有效的 APP generation，再以该值约束实际写入；Android 更新同一分区的合体 BOOT 后，不再因 Linux 保存旧标识而拒绝切换。若操作期间 BOOT 再次改变，原生工具仍拒绝写入。
 
 APP generation为SPLITv1元数据+96处16字节，也是NEXTv1+40处的绑定值。原生`piano-boot-request status --device ...`新增`app_generation` JSON字段，便于安装读回核对。`set/consume --expect-generation HEX32`在最初定位后与打开可写FD、重新定位时两次核对该值；不匹配时不写请求页。旧参数仍兼容，但产品helper总是传pin，不重复实现SPLIT parser或CRC。
 

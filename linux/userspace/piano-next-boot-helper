@@ -47,16 +47,28 @@ def main(argv):
         raise ValueError('status 是只读操作，不能带 --reboot。')
     if os.geteuid() != 0:
         raise ValueError('请使用 piano-next-boot；它会通过 polkit 请求本次操作的授权。')
-    device, generation = installed_config()
-    command = [str(NATIVE), 'status' if action == 'status' else 'set', '--device', device]
+    device, _installed_generation = installed_config()
+    # Android can update the shared BOOT independently of this rootfs. Read
+    # the current validated entry; retain the generation pin for the actual
+    # write so an intervening BOOT replacement cannot redirect the request.
+    environment = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8'}
+    current = subprocess.run([str(NATIVE), 'status', '--device', device],
+                             text=True, capture_output=True, check=False, env=environment)
+    if current.returncode:
+        raise ValueError(current.stderr.strip() or '无法读取当前 SunUEFI 引导，没有请求重启。')
+    record = json.loads(current.stdout)
+    generation = record.get('app_generation', '')
+    if not isinstance(generation, str) or not re.fullmatch(r'[0-9a-f]{32}', generation) or not int(generation, 16):
+        raise ValueError('当前 BOOT 没有有效的 SunUEFI 引导标识，没有请求重启。')
+    command = [str(NATIVE), 'set', '--device', device]
     if action != 'status':
         command += ['--target', action, '--expect-generation', generation]
-    result = subprocess.run(command, text=True, capture_output=True, check=False, env={'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8'})
-    if result.returncode:
-        raise ValueError(result.stderr.strip() or '原生启动请求失败；没有请求重启。')
-    record = json.loads(result.stdout)
+        result = subprocess.run(command, text=True, capture_output=True, check=False, env=environment)
+        if result.returncode:
+            raise ValueError(result.stderr.strip() or '原生启动请求失败；没有请求重启。')
+        record = json.loads(result.stdout)
     if record.get('app_generation') != generation:
-        raise ValueError('当前镜像 generation 与安装配置不同；请由安装器更新配置。')
+        raise ValueError('操作期间引导镜像已改变，请重新选择启动目标。')
     if action != 'status' and record.get('target') != TARGETS[action]:
         raise ValueError('原生请求读回的目标不同；没有请求重启。')
     record.update(boot_device=device, reboot_planned=reboot)
