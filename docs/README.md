@@ -9,6 +9,7 @@
 * [返回 Android 与故障恢复](user/recovery.md)
 * [UEFI Fastboot](user/fastboot.md)
 * [已知问题](user/known-issues.md)
+* [HMCL 图形加速](user/hmcl.md)
 
 ## 开发
 
