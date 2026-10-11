@@ -17,3 +17,4 @@ EFI_STATUS PianoProductBootLogStage(CONST CHAR8 *Name,EFI_STATUS Status,
 // Explicit diagnostic builds only: draw through the same GOP used by the
 // product boot log. No mode change, hardware write or protocol replacement.
 EFI_STATUS PianoProductDisplayCheckpoint(CONST CHAR8 *Name,UINT32 Stage);
+VOID PianoProductDisplayCheckpointReplay(VOID);

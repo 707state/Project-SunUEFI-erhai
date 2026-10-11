@@ -461,7 +461,7 @@ def prepare(root=ROOT):
     # All service flags bind actual product implementations; diagnostics are
     # not dispatched. FETCH enables the shared live SMMU storage guard.
     display_test=os.environ.get('SUNUEFI_DISPLAY_DIAGNOSTIC','0')
-    if display_test not in ('0','1'):raise ValueError('SUNUEFI_DISPLAY_DIAGNOSTIC must be 0 or 1')
+    if display_test not in ('0','1','2'):raise ValueError('SUNUEFI_DISPLAY_DIAGNOSTIC must be 0, 1 or 2')
     flags=PRODUCT_FLAGS+('PIANO_PRODUCT_DISPLAY_TEST='+display_test,)
     text+='\n[BuildOptions]\n  GCC:*_CLANGPDB_AARCH64_CC_FLAGS = '+ ' '.join('-D'+flag for flag in flags)+'\n'
     dsc.write_text(text)
@@ -485,7 +485,7 @@ def prepare(root=ROOT):
       'fastboot_mode':'resident_background','fastboot_surfaces':contract['fastboot']['available_in'],
       'default_application':'SimpleInit','setup_key':'F12','diagnostic_reboot_timer':False,
       'backend_initialization_required':True,'backends':backend_status(),'runtime_readiness':'NOT_PRODUCT_DEVICE_VALIDATED',
-      'service_compile_flags':list(flags),'display_diagnostic':display_test=='1','sources':list((*SOURCE_NAMES,*OS_BOOT_INF_SOURCES,*OBSERVATION_INF_SOURCES)),'native_foundation':native_id,'os_boot':os_boot,'dxe_observation':observation,'early_memory':early_memory,
+      'service_compile_flags':list(flags),'display_diagnostic':display_test!='0','clock_init_trace':display_test=='2','sources':list((*SOURCE_NAMES,*OS_BOOT_INF_SOURCES,*OBSERVATION_INF_SOURCES)),'native_foundation':native_id,'os_boot':os_boot,'dxe_observation':observation,'early_memory':early_memory,
       'simpleinit':simpleinit,'simpleinit_payload':app_identity,'ui_hooks':ui,'pump_hooks':prepare_pump(root,apply=False),
       'low_memory_contract':low_memory_contract,
       'display_mapping':display_contract,

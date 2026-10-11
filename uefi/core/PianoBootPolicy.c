@@ -2,6 +2,9 @@
 #include "PianoBootPolicy.h"
 #include <Protocol/PianoProductIdle.h>
 #include "PianoProductPayload.h"
+#if defined(PIANO_PRODUCT_DISPLAY_TEST) && PIANO_PRODUCT_DISPLAY_TEST
+#include "PianoProductBootLog.h"
+#endif
 #include "PianoUsbStorageExperiment.h"
 #include <Protocol/SimpleTextInEx.h>
 #include <Protocol/HiiDatabase.h>
@@ -206,6 +209,9 @@ STATIC EFI_STATUS EFIAPI Pump(PIANO_PRODUCT_RUNTIME_PROTOCOL *This,UINT32 Reason
   if(mReport.Pumping)return EFI_NOT_READY;
   EFI_STATUS S=AtApp();if(S!=EFI_SUCCESS)return S;
   mReport.Pumping=TRUE;mReport.IdleKnown=FALSE;++mReport.PumpCalls;
+#if defined(PIANO_PRODUCT_DISPLAY_TEST) && PIANO_PRODUCT_DISPLAY_TEST
+  if(Reason&PIANO_PRODUCT_PUMP_GUI)PianoProductDisplayCheckpointReplay();
+#endif
   mReport.KeyStatus=RefreshKeys();RequireAlive();
   if(mReport.Retained){mReport.Pumping=FALSE;return EFI_COMPROMISED_DATA;}
   if(mStartupUsbProof){
