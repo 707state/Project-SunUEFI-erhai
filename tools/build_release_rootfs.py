@@ -155,6 +155,36 @@ def put(root, name, text):
     path.parent.mkdir(parents=True, exist_ok=True); path.write_text(text)
 
 
+def default_system_record(rootfs, installed, config):
+    """Require the shipped desktop and BSP, including runtime-bundle resumes."""
+    required = {'gnome-shell', 'gdm3', 'systemd-sysv', 'pipewire', 'network-manager'}
+    required.update(config['debian']['extra_packages'])
+    missing = sorted(required - installed.keys())
+    if missing:
+        raise ValueError('Required desktop packages are not installed: ' + ', '.join(missing))
+
+    paths = (
+        'etc/dconf/db/local.d/00-sunuefi', 'etc/dconf/db/local',
+        'etc/dconf/profile/user', 'usr/lib/piano/bluetooth-address.py',
+        'etc/modules-load.d/piano-bluetooth.conf', 'usr/lib/piano/radio-start',
+        'usr/share/piano/pen/p81c-radio.json', 'usr/lib/piano/pen-bluetooth',
+        'usr/lib/piano/touch-input', 'usr/bin/piano-pen-canvas',
+    )
+    files = {}
+    for name in paths:
+        path = userspace.guest_resolve(rootfs, name)
+        if not path.is_file() or not path.stat().st_size:
+            raise ValueError('Required desktop/BSP file is missing: ' + name)
+        files[name] = digest(path)
+    defaults = ROOT / 'linux/desktops/gnome/defaults.ini'
+    if files['etc/dconf/db/local.d/00-sunuefi'] != digest(defaults):
+        raise ValueError('Packaged GNOME defaults differ from the desktop source')
+    if 'system-db:local' not in (rootfs / 'etc/dconf/profile/user').read_text().splitlines():
+        raise ValueError('GNOME dconf profile does not load the packaged defaults')
+    return {'packages': {name: installed[name] for name in sorted(required)},
+            'files': files, 'gnome_defaults_source': 'linux/desktops/gnome/defaults.ini'}
+
+
 def clock_epoch(rootfs):
     """Give systemd a build-time clock floor before RTC or NTP is available."""
     name = 'usr/lib/clock-epoch'
@@ -622,7 +652,7 @@ def execute(record):
         packages = capture(['chroot', rootfs, 'dpkg-query', '-W', '-f=${binary:Package}\t${Version}\t${Architecture}\t${db:Status-Status}\n'])
         (out / 'packages.tsv').write_text(packages + '\n')
         installed = {p[0].split(':')[0]: p[1] for line in packages.splitlines() if len(p := line.split('\t')) == 4 and p[3] == 'installed'}
-        if not {'gnome-shell', 'gdm3', 'systemd-sysv', 'pipewire', 'network-manager'} <= installed.keys(): raise ValueError('Required GNOME packages are not installed')
+        defaults = default_system_record(rootfs, installed, cfg)
         for package, row in sensors['packages'].items():
             if installed.get(package) != row['version']:
                 raise ValueError('Installed Piano sensors version differs: ' + package)
@@ -654,6 +684,7 @@ def execute(record):
                   'mutter': mutter,
                   'boot_request': boot_request, 'firmware_commit': cfg['firmware']['commit'],
                   'clock_epoch': clock,
+                  'default_system': defaults,
                   'initramfs': boot, 'password': cfg['login']['password'], 'autologin_retained': True,
                   'bit_reproducible': False, 'root_uid': rootfs.stat().st_uid, 'device_operation_performed': False}
         (out / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n')

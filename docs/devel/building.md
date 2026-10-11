@@ -60,6 +60,12 @@ docker run --rm -v "$PWD:/workspace" -w /workspace sunuefi-builder bash -euc '
 * 基础根系统已构建后，用 `./build.sh release-rootfs --resume` 更新内核、硬件包和配置，不重新运行 debootstrap。
 * 其他目标：`./build.sh rootfs --distro ID --desktop ID --plan` 列出 Ubuntu / Deepin / Arch 与 KDE 等组合的计划，目前只有 Debian / GNOME 完整验证。
 
+本地和 GitHub 的完整构建使用同一个 `release-rootfs` 入口，默认包含中文、
+拼音输入法、Chromium、GNOME 动画、蓝牙地址自动初始化和触控笔组件。
+根系统生成后检查这些包与必需文件，记录到 `manifest.json` 的 `default_system`；
+缺失时构建失败，不依赖首次启动后的手工补装。APT 使用有签名的更新仓库，
+因此不同日期构建的软件包版本可能不同，不要求二进制逐字节一致。
+
 ### 软件包的本地构建
 
 * **CPU 型号**：`linux/dts/piano-cpu-model.dtso` 给八个 CPU 节点加标准 `model` 属性，内核小补丁把它输出为 `/proc/cpuinfo` 的 `model name`，让 GNOME 显示 Snapdragon 8 Elite。MIDR、核心拓扑、时钟和板型号保持原值。
