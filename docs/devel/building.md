@@ -15,6 +15,8 @@
 
 容器基础镜像记录在 `config/build-container.json`，定义是 `containers/Dockerfile`：
 
+Debian 基础镜像从 ECR Public 的 Docker 官方镜像镜像站下载，仍固定同一个 OCI 摘要，避免 GitHub 共享出口触发 Docker Hub 匿名下载限额。下载来源变化不改变基础镜像内容。
+
 ```sh
 docker build -t sunuefi-builder -f containers/Dockerfile .
 ```

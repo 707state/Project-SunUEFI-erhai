@@ -1,5 +1,6 @@
 {
   "image": "debian",
+  "registry": "public.ecr.aws/docker/library",
   "tag": "trixie-20260918-slim",
   "index_digest": "sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a",
   "uefi/platforms": [

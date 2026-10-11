@@ -1,4 +1,4 @@
-FROM debian@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
+FROM public.ecr.aws/docker/library/debian@sha256:a99cfc517144bc59b1978475ec53b46ecabec7e43635402ee5b77cc54cd1b20a
 
 ENV DEBIAN_FRONTEND=noninteractive SUNUEFI_TOOLCHAIN_ROOT=/usr
 RUN apt-get update && apt-get install -y --no-install-recommends \
