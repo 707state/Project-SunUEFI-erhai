@@ -549,10 +549,30 @@ def apply_installation(device, plan, bundle_dir, execute=False, recovery=False, 
     return apply_update(device, plan, bundle_dir, execute, recovery, ssh_public_key)
 
 
+def discover_serial(runner=subprocess.run):
+    """Choose the single connected Piano; all later commands bind its serial."""
+    listed = runner(['adb', 'devices'], capture_output=True, text=True, check=True)
+    candidates = []
+    for line in listed.stdout.splitlines():
+        words = line.split()
+        if len(words) != 2 or words[1] != 'device':
+            continue
+        serial = words[0]
+        if not re.fullmatch(r'[A-Za-z0-9._:-]+', serial) or serial == 'SunUEFI-piano':
+            continue
+        product = runner(['adb', '-s', serial, 'shell', 'getprop', 'ro.product.device'],
+                         capture_output=True, text=True, timeout=10)
+        if product.returncode == 0 and product.stdout.strip() == 'piano':
+            candidates.append(serial)
+    require(candidates, '未找到可用的小米平板 8 Pro；请进入 Android、连接 USB 并允许 USB 调试。')
+    require(len(candidates) == 1, '连接了多台小米平板 8 Pro，请用 --serial 指定要安装的设备。')
+    return candidates[0]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('operation', choices=('inspect', 'plan', 'apply', 'provision-bluetooth'), nargs='?', default='inspect')
-    parser.add_argument('--serial', required=True, help='Explicit rooted Android ADB serial; factory serial is rechecked')
+    parser.add_argument('--serial', help='Optional ADB serial; automatically select the single connected Piano')
     parser.add_argument('--bundle', type=Path, help='Generic disk bundle for plan/apply/device provisioning')
     parser.add_argument('--plan', type=Path, help='Reviewed JSON plan for apply')
     parser.add_argument('--output', type=Path, help='Write inspection/plan/result JSON; never a partition backup')
@@ -568,7 +588,7 @@ def main():
         require(args.operation != 'inspect' or args.bundle is None, 'Use plan --bundle to verify a host bundle')
         if args.output:
             require(not args.output.exists() and not args.output.is_symlink(), 'Output exists; refusing to replace it')
-        device = Device(args.serial)
+        device = Device(args.serial or discover_serial())
         if args.operation == 'apply':
             require(args.plan is not None and args.bundle is not None, 'apply requires --plan and --bundle')
             result = apply_installation(device, read_json(args.plan), args.bundle, args.execute, ssh_public_key=args.ssh_public_key)

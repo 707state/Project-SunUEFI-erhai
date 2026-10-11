@@ -78,7 +78,7 @@ def export(output, bundle=None, product=None):
                (ROOT / 'tools/provision_piano_ssh.py', 'provision_piano_ssh.py'),
                (ROOT / 'uefi/components/product-support/Library/ConsoleScale/OFL.txt',
                 'licenses/OFL.PianoSetupFont.txt'),
-               (ROOT / 'docs/user/install-from-artifact.md', 'INSTALL.md')]
+               (ROOT / 'docs/user/install-from-computer.md', 'INSTALL.md')]
     sources += [(ROOT / 'tools/installer-launchers' / name, name)
                 for name in ('install.sh', 'install.cmd', 'installer_launcher.py')]
     for source, name in sources:
