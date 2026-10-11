@@ -14,3 +14,6 @@ EFI_STATUS PianoProductBootLogInitialize(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop,
 // service result; the caller continues to own all existing startup decisions.
 EFI_STATUS PianoProductBootLogStage(CONST CHAR8 *Name,EFI_STATUS Status,
                                    UINT64 ElapsedMs);
+// Explicit diagnostic builds only: draw through the same GOP used by the
+// product boot log. No mode change, hardware write or protocol replacement.
+EFI_STATUS PianoProductDisplayCheckpoint(CONST CHAR8 *Name,UINT32 Stage);

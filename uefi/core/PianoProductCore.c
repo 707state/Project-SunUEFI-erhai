@@ -133,6 +133,8 @@ STATIC VOID ObserveDisplay(CONST CHAR8 *Phase) {
 STATIC VOID ObserveNative(CONST CHAR8 *Name,BOOLEAN Before) {
   CHAR8 Phase[32];
   if(Name==NULL)FailStop(EFI_INVALID_PARAMETER);
+  if(AsciiStrCmp(Name,"ClockDxe")==0)
+    (VOID)PianoProductDisplayCheckpoint(Before?"BEFORE CLOCK":"AFTER CLOCK",Before?0:1);
   AsciiSPrint(Phase,sizeof(Phase),"%a:%a",Before?"pre":"post",Name);
   EFI_STATUS Status=PianoDisplaySmmuObserve(Phase,BootLogAlive);
   if(!BootLogAlive())FailStop(EFI_ABORTED);
@@ -235,11 +237,13 @@ EFI_STATUS EFIAPI PianoProductCoreEntry(EFI_HANDLE Image,EFI_SYSTEM_TABLE *Syste
   (VOID)PianoProductBootObjectsReemit(BootLogAlive);
   if(!BootLogAlive())FailStop(EFI_ABORTED);
   ObserveDisplay("before-foundation");
+  if(mStartupTarget==1)(VOID)PianoProductDisplayCheckpoint("BEFORE DRIVERS",0);
   PianoNativeSetObserver(ObserveNative);
   PianoProbeFoundation();
   PianoNativeSetObserver(NULL);
   if(!BootLogAlive())FailStop(EFI_ABORTED);
   ObserveDisplay("after-foundation");
+  if(mStartupTarget==1)(VOID)PianoProductDisplayCheckpoint("AFTER DRIVERS",2);
   mDisplayStartup=(PIANO_PRODUCT_DISPLAY_STARTUP_REPORT){.Revision=1,.KnownNoSideEffects=TRUE,.Status=EFI_NOT_STARTED};
   DEBUG((DEBUG_WARN,"PIANO_PRODUCT_DISPLAY_START status=%r inherited_gop=1 display_owner_refs=0 native_cesta_retention=7 display_cesta_auto_init_deferred=1 display_pll_auto_init_deferred=1 native_refs_exit_release_verified=0\n",mDisplayStartup.Status));
   ObserveDisplay("after-display-lease");
@@ -278,6 +282,7 @@ EFI_STATUS EFIAPI PianoProductCoreEntry(EFI_HANDLE Image,EFI_SYSTEM_TABLE *Syste
   BootLogStage("UFS",EFI_NOT_STARTED);
   PianoUfsSetProbeAction(InitUfs);PianoProbeUfs(Fdt);BootLogStage("UFS",mUfsStatus);
   ObserveDisplay("after-ufs");
+  if(mStartupTarget==1)(VOID)PianoProductDisplayCheckpoint("AFTER UFS",3);
   DEBUG((DEBUG_WARN,"PIANO_PRODUCT_UFS_START attempted=%u status=%r started=%u original_media_readonly=1\n",mUfsAttempted,mUfsStatus,mUfsStarted));
   if(!mUfsAttempted || !mUfsStarted)FailStop(mUfsStatus);
   PIANO_UFS_WINDOW_IO ProductStorageIo={0};
@@ -344,6 +349,7 @@ EFI_STATUS EFIAPI PianoProductCoreEntry(EFI_HANDLE Image,EFI_SYSTEM_TABLE *Syste
   DEBUG((DEBUG_WARN,"PIANO_PRODUCT_CORE_READY one_shared_core=1 auto_simpleinit=%u auto_stable=%u f12_setup=1 usb_background=%u\n",
     (UINT32)(PianoBootPolicyReport()->StartupDefaultAction==PIANO_PRODUCT_ACTION_SIMPLEINIT),(UINT32)(PianoBootPolicyReport()->StartupDefaultAction==PIANO_PRODUCT_ACTION_REQUEST_BOOT_STABLE),UsbStarted));
   BootLogStage("MENU",EFI_SUCCESS);
+  if(mStartupTarget==1)(VOID)PianoProductDisplayCheckpoint("BEFORE SIMPLEINIT",4);
   for(;;) {
     Status=PianoBootPolicyRun();
     if(Status==EFI_END_OF_FILE) {
