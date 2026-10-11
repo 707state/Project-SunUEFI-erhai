@@ -114,7 +114,7 @@ def plan(kernel, source, output, mesa_dir=None, runtime_dir=None, kernel_build=N
                       'install extra packages with signed APT defaults; record mutable repository metadata',
                       'verify sensors SOURCE/SHA256SUMS; install six runtime packages and signed APT dependencies',
                       'stage public overlay/adapters/modules; build_release_helpers uses actual compiler, alsatplg/m4 and matching kernel ABI',
-                      'verify/stage firmware; apply label storage policy; lock passwords and remove generated access keys',
+                      'verify/stage firmware; apply label storage policy; set the documented login password and remove generated access keys',
                       'record actual packages/source hashes; build release label initramfs; no archive or device writes']}
 
 
@@ -261,7 +261,10 @@ def sanitize(rootfs, output):
     path = target(rootfs, Path('var/lib/dbus/machine-id'))
     if path.exists() or path.is_symlink(): path.unlink()
     path.parent.mkdir(parents=True, exist_ok=True); path.symlink_to('/etc/machine-id')
-    subprocess.run(['chroot', str(rootfs), '/usr/sbin/usermod', '--password', '!', 'piano'], check=True)
+    login = json.loads(POLICY.read_text())['login']
+    subprocess.run(['chroot', str(rootfs), '/usr/sbin/chpasswd'],
+                   input=login['user'] + ':' + login['password'] + '\n',
+                   text=True, check=True)
     for name in ('etc/shadow-', 'etc/gshadow-'):
         backup = target(rootfs, name)
         if backup.exists() or backup.is_symlink(): backup.unlink()
@@ -651,7 +654,7 @@ def execute(record):
                   'mutter': mutter,
                   'boot_request': boot_request, 'firmware_commit': cfg['firmware']['commit'],
                   'clock_epoch': clock,
-                  'initramfs': boot, 'password': 'locked; owner must set their own', 'autologin_retained': True,
+                  'initramfs': boot, 'password': cfg['login']['password'], 'autologin_retained': True,
                   'bit_reproducible': False, 'root_uid': rootfs.stat().st_uid, 'device_operation_performed': False}
         (out / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n')
         (out / 'FAILED.json').unlink(missing_ok=True)

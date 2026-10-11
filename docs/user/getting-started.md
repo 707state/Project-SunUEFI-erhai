@@ -7,6 +7,8 @@ SunUEFI 有两种用法：
 
 临时加载本身不会把 Linux 装进平板。要进入 Linux，平板里需要已经有 `sunuefi_esp` 和 `sunuefi_root`。
 
+Linux 默认用户名为 `piano`，密码为 `piano123456`，桌面默认自动登录。锁屏解锁和 `sudo` 使用这个密码；可在系统设置中修改，或运行 `passwd`。
+
 ## 准备
 
 * 小米平板 8 Pro，Bootloader 已解锁，重要数据已备份。

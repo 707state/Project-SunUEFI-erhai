@@ -87,6 +87,8 @@ SunUEFI 运行时在后台提供一个 USB Fastboot 服务，设备名为 `SunUE
 | 电池与充电状态 | 双电池、基础 PD 充电和 UPower 状态 |
 | 默认桌面 | 中文界面、拼音输入法、Chromium 浏览器，GNOME 动画开启 |
 
+Linux 默认用户名：`piano`，密码：`piano123456`。桌面自动登录，锁屏和 `sudo` 使用此密码；修改密码可运行 `passwd`。
+
 ### 可以使用，但有问题
 
 | 功能 | 能做到什么 | 现存问题 |

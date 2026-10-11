@@ -95,7 +95,7 @@
   "login": {
     "user": "piano",
     "autologin": true,
-    "password": "locked; owner sets their own password after deployment"
+    "password": "piano123456"
   },
   "reproducibility": "source identities and actual package/metadata hashes recorded; complete bit reproducibility is not claimed"
 }
