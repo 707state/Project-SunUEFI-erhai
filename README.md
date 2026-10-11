@@ -19,6 +19,20 @@
 
 目前最影响使用的是：启动到桌面通常需要一到两分钟，途中可能长时间灰屏或白屏，缺少清楚的进度提示；切换刷新率、关屏或合盖之后，屏幕可能黑屏而背光仍亮，需要重启。完整列表见下文[功能与已知问题](#功能与已知问题)。
 
+## 实机画面
+
+| | |
+| --- | --- |
+| ![Android 与 UEFI 开机选择](docs/assets/gallery/boot-selection.webp)<br>开机选择 | ![TianoCore 启动画面](docs/assets/gallery/uefi-splash.webp)<br>UEFI 启动画面 |
+| ![GNOME 系统信息与相机预览](docs/assets/gallery/gnome-camera.webp)<br>Debian / GNOME 与相机 | ![Android 引导助手界面预览](docs/assets/gallery/android-boot-helper-preview.webp)<br>Android 引导助手 |
+
+
+| Minecraft · Vulkan / Turnip | Minecraft · OpenGL / Freedreno |
+| --- | --- |
+| ![原版 Minecraft 26.3 Vulkan 实机画面](docs/assets/gallery/minecraft-vulkan.webp) | ![原版 Minecraft 26.3 OpenGL 实机画面](docs/assets/gallery/minecraft-opengl.webp) |
+
+两张均为原版 Minecraft 26.3，无优化模组，在平板 3K 屏幕上运行。照片分别显示约 446 FPS 和 174 FPS，为不同场景的瞬时读数。Vulkan 的分辨率显示差异可能与驱动 bug 或 Wayland 缩放有关。
+
 ## 开机时发生什么
 
 平板最早的启动阶段仍由小米原厂的引导程序（XBL 和 ABL）完成，我们没有替换它们。SunUEFI 放进的是 Android 的 BOOT 分区：在原厂 Android 内核前面加一个很小的“选择器”，再把同一份 SunUEFI 核心附在后面。这个组合叫**合体 BOOT**。
@@ -99,7 +113,7 @@ Linux 默认用户名：`piano`，密码：`piano123456`。桌面自动登录，
 | 传感器 | 加速度、光线、罗盘、距离等数据可读，并接入标准的 SensorProxy | 自动旋转、自动亮度曲线等桌面联动还在完善；陀螺仪等数据的单位和标准接口未全部完成 |
 | 电源 | 充电状态、基础 PD 充电 | 关机偶尔回到 Android，原因未知；合盖和电源键目前只处理背光 |
 | 启动时间 | 能从内部 ext4 启动到桌面 | 通常需要一到两分钟，启动过程中可能灰屏或白屏、没有进度提示；首次启动可能更久 |
-| UEFI 菜单 / Setup / Shell | 中文菜单和实体按键可用 | 集成版本的物理屏幕白屏（截图内容正确）；UEFI 阶段触屏和键盘不可用。进入 Linux 后屏幕恢复正常 |
+| UEFI 菜单 / Setup / Shell | SimpleInit 中文菜单可显示、可操作，能进入标准 Setup | Setup 当前字号过小、侧键输入待修；UEFI 阶段触屏和键盘尚未接通 |
 | UEFI Fastboot | 日志、截图、只读读取 | 冷启动 USB 初始化曾超时，部分后台场景未走通 |
 | 闪光灯 / RGB 灯 / 红外 | 闪光灯的标准 LED 接口已注册；RGB 灯接口已出现 | 闪光灯实际发光未观察；红外发射未验证 |
 
@@ -126,7 +140,7 @@ Linux 默认用户名：`piano`，密码：`piano123456`。桌面自动登录，
 
 ### 安装
 
-1. 在工作流里选择 `debian-gnome` 目标（`uefi` 和 `linux` 目标不含完整系统），下载 `piano-debian-gnome-提交号` 并解压。
+1. 默认完整构建提供三项下载：`SunUEFI-Android-Module-提交号`、`SunUEFI-ESP-提交号`、`SunUEFI-Root-提交号`。把 ESP 与 Root 两个包解压到同一目录，合并其中的 `bundle/`；ESP 包附带安装脚本。手动选择 `uefi` 或 `linux` 只生成对应开发产物，不含完整系统。
 2. 用 `adb devices -l` 找到平板在 Android 下的序列号，然后运行：
 
    ```sh
@@ -144,7 +158,7 @@ Linux 默认用户名：`piano`，密码：`piano123456`。桌面自动登录，
 
 安装器的完整说明见[下载包中的安装入口](docs/user/install-from-artifact.md)。
 
-同一轮构建还提供 `piano-android-module-目标-提交号`，里面有 **SunUEFI 引导助手 ZIP**。把 ZIP 传到平板，在 SukiSU 的模块页面安装，正常重启后点击 **打开 WebUI**，就可以选择 Android／UEFI、查看独立存储分区和维护引导。
+`SunUEFI-Android-Module-提交号` 里面有 **SunUEFI 引导助手 ZIP**。把 ZIP 传到平板，在 SukiSU 的模块页面安装：音量＋安装或更新引导，音量－只装助手；相同核心直接跳过 BOOT 写入。正常重启后点击 **打开 WebUI**，即可选择系统、管理独立存储和维护引导。
 
 模块会从平板当前 BOOT 提取 Android 内核并安装开机选择器；已有 SunUEFI 时保留当前选择并更新核心。它默认进入 Android，不自动分区。HyperOS 更新后，在维护页点击 **重新安装引导**，即可使用更新后的内核重新打包。当前支持的 BOOT 格式和其他管理器的用法见 [Android 引导助手](docs/devel/android-module.md)。Linux 仍需要前面的 ESP／root 安装步骤，模块中的新分区管理尚未完成实机验证。临时体验入口见[快速体验](docs/user/getting-started.md)。
 

@@ -4,8 +4,8 @@ SunUEFI 引导助手在 Android 中安装和维护合体 BOOT，提供 Android�
 
 ## 使用
 
-1. 从 **Build products** 的 `piano-android-module-目标-提交号` 下载并解压模块包，将里面的 `SunUEFI-Piano-版本.zip` 传到平板。
-2. 在正常运行的 Android 中，用 SukiSU 的模块页面安装 ZIP。安装程序识别当前 BOOT，再安装、更新或保留相同核心。
+1. 从 **Build products** 的 `SunUEFI-Android-Module-提交号` 下载并解压模块包，将里面的 `SunUEFI-Piano-版本.zip` 传到平板。
+2. 在正常运行的 Android 中，用 SukiSU 的模块页面安装 ZIP。相同核心只读取、不重写 BOOT；其余情况提示音量＋安装或更新引导，音量－只安装助手。30 秒未选择时只安装助手，可稍后在维护页安装引导。
 3. 正常重启，点击模块卡片上的 **打开 WebUI**。
 
 页面分为 **启动、存储、维护** 三页，横屏使用侧边导航，竖屏使用底部导航。启动页提供 Android、UEFI 两条路线。选择 UEFI 后，已安装的 Linux 会默认选中并直接启动；启动菜单作为另一入口保留。没有 Linux 启动文件时，仅显示启动菜单。选择目标后点击 **保存并重启**，以后普通开机和重启沿用该选择，直到再次更改。

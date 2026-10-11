@@ -1,12 +1,14 @@
 # 下载包中的安装入口
 
-从 GitHub Actions 的 **Build products** 下载并解压 `piano-目标-提交号`。包里有 `install.sh`（Linux / macOS）、`install.cmd`（Windows）、独立的安装器和 `INSTALL.md`。不需要克隆仓库。
+默认 GitHub Actions 的 **Build products** 提供三项下载：
 
-| 目标 | 内容 |
+| 下载 | 内容 |
 | --- | --- |
-| `uefi` | 固件镜像和安装工具，没有 ESP / root 镜像 |
-| `linux` | Linux 内核与模块构建结果 |
-| `debian-gnome` | 完整的 Debian / GNOME 系统包，放在 `bundle/` 里，可用来更新磁盘 |
+| `SunUEFI-Android-Module-提交号` | 引导助手模块 ZIP |
+| `SunUEFI-ESP-提交号` | ESP 镜像、固件和 `install.sh`／`install.cmd` 一键安装脚本 |
+| `SunUEFI-Root-提交号` | `bundle/root.ext4.img`，完整 Debian / GNOME 根系统 |
+
+将 ESP 与 Root 包解压到同一目录，合并 `bundle/`。安装脚本旁边应同时有 `bundle/esp.img` 和 `bundle/root.ext4.img`。不需要克隆仓库。手动选择 `uefi` 或 `linux` 构建只生成对应开发产物，不提供完整系统。
 
 构建日志在另一个 `piano-build-records-目标-提交号` 里。
 
@@ -26,7 +28,7 @@ sh install.sh plan --serial 序列号 --output update-plan.json
 sh install.sh apply --serial 序列号 --plan update-plan.json
 ```
 
-Windows 把 `sh install.sh` 换成 `install.cmd`。完整磁盘包会自动使用旁边的 `bundle/`；`uefi` 包没有磁盘镜像，需要时用 `--bundle 绝对路径` 指定。
+Windows 把 `sh install.sh` 换成 `install.cmd`。安装器自动使用旁边合并好的 `bundle/`。
 
 确认计划后，加上 `--execute` 才会写入：
 
