@@ -7,7 +7,9 @@
 #define PIANO_PRODUCT_DISPLAY_TEST 0
 #endif
 #if PIANO_PRODUCT_DISPLAY_TEST
-STATIC struct {CONST CHAR8 *Name;UINT32 Stage;EFI_STATUS Status;} mCheckpoints[32];
+#include <Library/BaseLib.h>
+#include "PianoDisplayClockObserve.h"
+STATIC struct {CONST CHAR8 *Name;UINT32 Stage;EFI_STATUS Status,GccStatus;UINT32 Gcc[2];} mCheckpoints[32];
 STATIC UINT32 mCheckpointCount,mCheckpointReplayCalls;
 #endif
 
@@ -76,16 +78,27 @@ STATIC EFI_STATUS Text(CONST CHAR8 *String,UINT32 X,UINT32 Y,EFI_GRAPHICS_OUTPUT
 EFI_STATUS PianoProductDisplayCheckpoint(CONST CHAR8 *Name,UINT32 Stage){
 #if PIANO_PRODUCT_DISPLAY_TEST
   if(!mCanvas.Gop||!mCanvas.Alive||!mCanvas.Alive())return EFI_NOT_READY;
+  UINT32 Gcc[2]={0};
+  EFI_STATUS GccStatus=PianoDisplayClockSampleGcc(mCanvas.Alive,Gcc);
+  if(PianoDisplayClockRetained()||!mCanvas.Alive()){CpuDeadLoop();return EFI_ABORTED;}
   STATIC CONST UINT8 Colors[][3]={{32,64,160},{0,130,100},{180,80,0},{130,40,160},{20,110,170}};
   UINT32 Index=Stage%(sizeof(Colors)/sizeof(Colors[0]));
   EFI_STATUS Status=Rect(Color(Colors[Index][0],Colors[Index][1],Colors[Index][2]),0,0,mCanvas.Width,mCanvas.Height);
-  if(Status==EFI_SUCCESS)Status=Rect(Color(245,245,245),mCanvas.Width/8,mCanvas.Height/3,mCanvas.Width*3/4,mCanvas.Height/3);
+  if(Status==EFI_SUCCESS)Status=Rect(Color(245,245,245),mCanvas.Width/8,mCanvas.Height/4,mCanvas.Width*3/4,mCanvas.Height/2);
+  UINT32 SavedScale=mCanvas.Scale,Number=mCheckpointCount+1;
+  CHAR8 NumberText[3]={(CHAR8)('0'+Number/10),(CHAR8)('0'+Number%10),0};
+  mCanvas.Scale=mCanvas.Width/80;
+  if(Status==EFI_SUCCESS)Status=Text(NumberText,mCanvas.Width/6,mCanvas.Height/3,Color(20,20,20));
+  mCanvas.Scale=mCanvas.Width/180;
   if(Status==EFI_SUCCESS)Status=Text(Name,mCanvas.Width/6,mCanvas.Height/2,Color(20,20,20));
+  mCanvas.Scale=SavedScale;
   DEBUG((DEBUG_WARN,"PIANO_DISPLAY_CHECKPOINT name=%a stage=%u status=%r gop=%p base=%lx mode=%u\n",
     Name,Stage,Status,mCanvas.Gop,mCanvas.Gop->Mode->FrameBufferBase,mCanvas.Gop->Mode->Mode));
   if(mCheckpointCount<ARRAY_SIZE(mCheckpoints)){
     mCheckpoints[mCheckpointCount].Name=Name;
     mCheckpoints[mCheckpointCount].Stage=Stage;
+    mCheckpoints[mCheckpointCount].GccStatus=GccStatus;
+    mCheckpoints[mCheckpointCount].Gcc[0]=Gcc[0];mCheckpoints[mCheckpointCount].Gcc[1]=Gcc[1];
     mCheckpoints[mCheckpointCount++].Status=Status;
   }
   if(Status==EFI_SUCCESS && mCanvas.Alive())Status=gBS->Stall(3000000);
@@ -100,8 +113,9 @@ VOID PianoProductDisplayCheckpointReplay(VOID){
   // through the existing GUI pump; no timer, display call or new owner.
   if((++mCheckpointReplayCalls%1024)!=1)return;
   for(UINT32 I=0;I<mCheckpointCount;++I)
-    DEBUG((DEBUG_WARN,"PIANO_DISPLAY_CHECKPOINT_SAVED name=%a stage=%u status=%r\n",
-      mCheckpoints[I].Name,mCheckpoints[I].Stage,mCheckpoints[I].Status));
+    DEBUG((DEBUG_WARN,"PIANO_DISPLAY_CHECKPOINT_SAVED id=%u name=%a stage=%u status=%r gcc=%r ahb=%08x axi=%08x\n",
+      I+1,mCheckpoints[I].Name,mCheckpoints[I].Stage,mCheckpoints[I].Status,
+      mCheckpoints[I].GccStatus,mCheckpoints[I].Gcc[0],mCheckpoints[I].Gcc[1]));
 #endif
 }
 STATIC BOOLEAN Equal(CONST CHAR8 *A,CONST CHAR8 *B){

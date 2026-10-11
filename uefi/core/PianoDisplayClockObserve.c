@@ -145,3 +145,28 @@ EFI_STATUS PianoDisplayClockReemit(PIANO_DISPLAY_CLOCK_ALIVE Alive){
 BOOLEAN PianoDisplayClockRetained(VOID){return mReport.Retained;}
 CONST PIANO_DISPLAY_CLOCK_REPORT *PianoDisplayClockGetReport(VOID){return &mReport;}
 CONST PIANO_DISPLAY_CLOCK_SPEC *PianoDisplayClockSpecs(VOID){return mSpecs;}
+EFI_STATUS PianoDisplayClockSampleGcc(PIANO_DISPLAY_CLOCK_ALIVE Alive,UINT32 Values[2]){
+  if(!Alive||!Values)return EFI_INVALID_PARAMETER;
+  if(mBusy||mReport.Retained||mReport.ServicesLost)return EFI_NOT_READY;
+  mBusy=TRUE;mAlive=Alive;
+  PIANO_GUARDED_CONFIG C=Config(FALSE);VOID *Token=NULL;
+  EFI_STATUS Status=PianoGuardedReadBegin(&C,&Token);
+  UINT32 Pair[2][2]={{0}};
+  if(Status==EFI_SUCCESS&&Token){
+    for(UINT32 J=0;J<2&&Status==EFI_SUCCESS;++J)
+      for(UINT32 I=0;I<2&&Status==EFI_SUCCESS;++I)
+        Status=PianoGuardedRead32(Token,mSpecs[I].Address,&Pair[J][I]);
+    EFI_STATUS End=PianoGuardedReadEnd(Token);
+    if(End!=EFI_SUCCESS)Status=End;
+  }else if(Status==EFI_SUCCESS)Status=EFI_COMPROMISED_DATA;
+  CONST PIANO_GUARDED_REPORT *R=PianoGuardedReadReport();
+  if(R->Retained||R->ServicesLost||R->Fatal||R->Active||R->SyncOwned||R->SErrorOwned)
+    mReport.Retained=TRUE;
+  if(Alive()!=TRUE){mReport.ServicesLost=mReport.Retained=TRUE;Status=EFI_ABORTED;}
+  if(Status==EFI_SUCCESS){
+    if(Pair[0][0]!=Pair[1][0]||Pair[0][1]!=Pair[1][1])Status=EFI_NOT_READY;
+    else{Values[0]=Pair[0][0];Values[1]=Pair[0][1];}
+  }
+  if(!mReport.Retained)mAlive=NULL;
+  mBusy=FALSE;return Status;
+}

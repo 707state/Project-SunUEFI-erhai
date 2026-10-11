@@ -41,3 +41,6 @@ EFI_STATUS PianoDisplayClockReemit(PIANO_DISPLAY_CLOCK_ALIVE Alive);
 BOOLEAN PianoDisplayClockRetained(VOID);
 CONST PIANO_DISPLAY_CLOCK_REPORT *PianoDisplayClockGetReport(VOID);
 CONST PIANO_DISPLAY_CLOCK_SPEC *PianoDisplayClockSpecs(VOID);
+// Small diagnostic sample of the already-qualified GCC page only. No access
+// to DISPCC/DPU or native clock APIs during partial driver initialization.
+EFI_STATUS PianoDisplayClockSampleGcc(PIANO_DISPLAY_CLOCK_ALIVE Alive,UINT32 Values[2]);
