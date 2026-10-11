@@ -20,32 +20,36 @@ class InheritedClockTests(unittest.TestCase):
         cls.source = Path(catalog['drivers']['ClockDxe']['pe_path'])
         cls.original = cls.source.read_bytes()
 
-    def test_exact_six_bytes_return_zero_and_unchanged_abi(self):
+    def test_exact_startup_deferral_and_unchanged_runtime_abi(self):
         derived, record = CLOCK.derive(self.original)
         self.assertEqual(len(derived), len(self.original))
         differences = [i for i, (old, new) in enumerate(zip(self.original, derived)) if old != new]
-        self.assertEqual(differences, list(range(0xc6d0, 0xc6d4)) + [0x31593, 0x3e588])
-        self.assertEqual(struct.unpack_from('<I', derived, 0xc6d0)[0], 0x52800000)
+        self.assertEqual(differences, list(range(0xc784, 0xc788)) + [0x3ead0])
+        self.assertEqual(struct.unpack_from('<I', derived, 0xc784)[0], 0x52800000)
         # MOVZ W0, imm16=0, shift=0: zero-extends x0 and makes following CBNZ fall through.
-        word = struct.unpack_from('<I', derived, 0xc6d0)[0]
+        word = struct.unpack_from('<I', derived, 0xc784)[0]
         self.assertEqual(word & 31, 0)
         self.assertEqual((word >> 5) & 0xffff, 0)
         self.assertEqual((word >> 21) & 3, 0)
-        self.assertEqual(derived[0xc6d4:0xc6d8], bytes.fromhex('e0000035'))
-        self.assertEqual(derived[0x3e588:0x3e58c], b'\0' * 4)
-        self.assertEqual(struct.unpack_from('<I', derived, 0x31590)[0], 0x00004000)
+        self.assertEqual(derived[0xc788:0xc78c], bytes.fromhex('60000034'))
+        self.assertEqual(derived[0x3e588:0x3e58c], self.original[0x3e588:0x3e58c])
+        self.assertEqual(derived[0x31590:0x31594], self.original[0x31590:0x31594])
+        self.assertEqual(struct.unpack_from('<I', derived, 0x3ead0)[0], 0)
+        self.assertEqual(derived[0x4604:0x47f4], self.original[0x4604:0x47f4])
         start = CLOCK.PROTOCOL_RVA
         self.assertEqual(derived[start:start + CLOCK.PROTOCOL_BYTES], self.original[start:start + CLOCK.PROTOCOL_BYTES])
         self.assertEqual(record['derived_sha256'], hashlib.sha256(derived).hexdigest())
-        self.assertEqual(record['retained_clocks'], list(CLOCK.RETAINED_CLOCKS))
-        self.assertEqual(record['retained_resource_count'], 7)
+        self.assertEqual(record['retained_clocks'], [])
+        self.assertEqual(record['retained_resource_count'], 0)
+        self.assertEqual(record['deferred_temporary_clocks'], list(CLOCK.CESTA_CLOCKS))
+        self.assertTrue(record['cesta_media_startup_deferred'])
         self.assertFalse(record['display_only'])
         self.assertFalse(record['hardware_verified'])
         self.assertFalse(record['owned_retirement_claimed'])
         self.assertTrue(record['display_cesta_auto_init_deferred'])
         self.assertTrue(record['display_pll_auto_init_deferred'])
         self.assertFalse(record['full_display_preservation_claimed'])
-        self.assertEqual(record['changed_byte_count'], 6)
+        self.assertEqual(record['changed_byte_count'], 5)
         self.assertEqual(record['derived_sha256'], CLOCK.DERIVED_SHA256)
         self.assertEqual(self.source.read_bytes(), self.original)
         self.assertEqual(CLOCK.derive(self.original), (derived, record))
@@ -60,13 +64,13 @@ class InheritedClockTests(unittest.TestCase):
             CLOCK.derive(derived)
 
     def test_independent_neighbor_and_call_guards(self):
-        for offset in (0xc6cc, 0xc6d0, 0xc6d4):
+        for offset in (0xc780, 0xc784, 0xc788):
             altered = bytearray(self.original)
             altered[offset] ^= 1
             altered = bytes(altered)
             # Isolate the context check independently of the stronger full source pin.
             with patch.object(CLOCK, 'ORIGINAL_SHA256', hashlib.sha256(altered).hexdigest()):
-                with self.assertRaisesRegex(ValueError, 'cleanup context'):
+                with self.assertRaisesRegex(ValueError, 'startup call context'):
                     CLOCK.derive(altered)
 
     def test_independent_names_flags_bsp_and_opcode_guards(self):

@@ -1,32 +1,32 @@
 """Derive the product-staging ClockDxe compatibility image from pinned ROM bytes.
 
 This pure function does not modify the capture or write files. Product staging
-may retain the seven CESTA clock acquisitions for firmware lifetime and defer
-display CESTA/PLL automatic initialization through their existing native flags.
-This is neither display-only ownership nor full ABL display preservation, and
-no verified hardware behavior or automatic EBS retirement is claimed.
+defers the automatic CESTA/media startup pass, which programs camera, display,
+EVA and video resources unused by the current UEFI core. Runtime clock
+interfaces remain intact for actual UFS/USB consumers.
 """
 import hashlib
 import struct
 
 ORIGINAL_SHA256 = 'f9e85aa758932b4366c55ec83b58e0176f58fba2944cc2fdd34875a46fdb769e'
-DERIVED_SHA256 = '3f459c822c8d8f87ca832b37709c3b56548319bfe60ff01ffd37ddc56d72d967'
-PATCH_RVA = 0xc6d0
-ORIGINAL_INSTRUCTION = bytes.fromhex('79ffff97')  # BL 0xc4b4
+DERIVED_SHA256 = 'abb63e6cc5d96dc2c3256f5a09ba0a30216150fa7aea595743d84ef067686f60'
+PATCH_RVA = 0xc784
+ORIGINAL_INSTRUCTION = bytes.fromhex('6fffff97')  # BL 0xc540
 REPLACEMENT_INSTRUCTION = bytes.fromhex('00008052')  # MOV w0,#0
-ORIGINAL_CONTEXT = bytes.fromhex('007975f879ffff97e0000035')
+ORIGINAL_CONTEXT = bytes.fromhex('210100546fffff9760000034')
 PROTOCOL_RVA = 0x28148
 PROTOCOL_BYTES = 0x128  # Version and all 36 callbacks, before the next list object.
 DISPLAY_CESTA_RVA = 0x3e4b0
 DISPLAY_CESTA_FLAG_RVA = 0x3e588
 DISPLAY_PLL_RVA = 0x31580
 DISPLAY_PLL_FLAGS_RVA = 0x31590
+DCD_STARTUP_CONTROL_RVA = 0x3ead0
 AUTO_INIT_OPCODES = {
     0xc5b4: '09604339', 0xc5b8: '89000036', 0xc5bc: '08ffff97',
     0xc604: 'a84e4039', 0xc608: '28021036',
     0xc62c: 'c7f3ff97', 0xc644: '61f5ff97',
 }
-RETAINED_CLOCKS = (
+CESTA_CLOCKS = (
     'gcc_camera_ahb_clk', 'cam_cc_drv_xo_clk', 'cam_cc_drv_ahb_clk',
     'gcc_disp_ahb_clk', 'disp_cc_mdss_non_gdsc_ahb_clk',
     'disp_cc_mdss_rscc_ahb_clk', 'disp_cc_mdss_rscc_vsync_clk',
@@ -71,9 +71,9 @@ def derive(original):
         raise ValueError('Original ClockDxe SHA256 pin mismatch')
     offset = _section_offset(original, PATCH_RVA, 4)
     if offset != PATCH_RVA or original[offset - 4:offset + 8] != ORIGINAL_CONTEXT:
-        raise ValueError('ClockDxe LDR/BL/CBNZ cleanup context changed')
-    if _branch_target(struct.unpack_from('<I', original, offset)[0], PATCH_RVA) != 0xc4b4:
-        raise ValueError('Cleanup branch no longer targets the audited callee')
+        raise ValueError('ClockDxe startup call context changed')
+    if _branch_target(struct.unpack_from('<I', original, offset)[0], PATCH_RVA) != 0xc540:
+        raise ValueError('Startup branch no longer targets the audited CESTA pass')
     for rva, instruction in AUTO_INIT_OPCODES.items():
         instruction_offset = _section_offset(original, rva, 4)
         if original[instruction_offset:instruction_offset + 4] != bytes.fromhex(instruction):
@@ -119,43 +119,59 @@ def derive(original):
         for j in range(count):
             name = struct.unpack_from('<Q', original, names + j * 8)[0]
             clocks.append(original[name:original.index(b'\0', name)].decode('ascii'))
-    if tuple(clocks) != RETAINED_CLOCKS:
+    if tuple(clocks) != CESTA_CLOCKS:
         raise ValueError('CESTA retained-resource scope changed')
+    dcd_control = _section_offset(original, DCD_STARTUP_CONTROL_RVA, 4)
+    if (struct.unpack_from('<I', original, dcd_control)[0] != 1 or
+            original[0x46cc:0x46d4] != bytes.fromhex('08d14ab928070034') or
+            not _name_matches(original, 0x24dd2, 'ClockDCDEnableDependencies') or
+            not _name_matches(original, 0x24ded, 'ClockDCDDisableDependencies')):
+        raise ValueError('DCD startup dependency branch changed')
     changed_data = bytearray(original)
     changed_data[offset:offset + 4] = REPLACEMENT_INSTRUCTION
-    changed_data[cesta_flag] = 0  # Existing instance-only TBZ skip route.
-    struct.pack_into('<I', changed_data, pll_flags, 0x00004000)  # Preserve bit14; clear only bit26.
+    # This board switch gates only the DCD startup dependency enable/disable
+    # block at 46cc..47b4. Keep CPU/SCMI initialization and runtime APIs intact.
+    struct.pack_into('<I', changed_data, dcd_control, 0)
     derived = bytes(changed_data)
     changed = [i for i, (old, new) in enumerate(zip(original, derived)) if old != new]
-    expected_changes = list(range(offset, offset + 4)) + [pll_flags + 3, cesta_flag]
+    expected_changes = list(range(offset, offset + 4)) + [dcd_control]
     if len(derived) != len(original) or changed != expected_changes:
-        raise ValueError('Derivation changed bytes outside the six-byte compatibility delta')
+        raise ValueError('Derivation changed bytes outside the five-byte startup deferral')
     if _sha(derived) != DERIVED_SHA256:
         raise ValueError('Derived ClockDxe SHA256 pin mismatch')
     if derived[protocol:protocol + PROTOCOL_BYTES] != before_table:
         raise ValueError('Derivation changed the protocol callback table')
     metadata = {
         'status': 'DERIVED_PRODUCT_STAGING_ONLY',
-        'scope': 'FIRMWARE_LIFETIME_CESTA_CLOCK_RETENTION',
+        'scope': 'DEFER_UNUSED_CESTA_AND_MEDIA_STARTUP',
         'original_sha256': ORIGINAL_SHA256, 'derived_sha256': _sha(derived),
         'bytes': len(derived), 'hardware_verified': False,
         'patch_rva': PATCH_RVA, 'patch_file_offset': offset,
         'original_bytes_hex': ORIGINAL_INSTRUCTION.hex(),
         'replacement_bytes_hex': REPLACEMENT_INSTRUCTION.hex(),
-        'original_instruction': 'BL 0xc4b4', 'replacement_instruction': 'MOV w0,#0',
-        'semantic_return': 'Zero status for intentionally skipped cleanup; NOP would leave a descriptor pointer in w0.',
-        'retained_clocks': clocks, 'retained_resource_count': len(clocks),
+        'original_instruction': 'BL 0xc540', 'replacement_instruction': 'MOV w0,#0',
+        'semantic_return': 'Zero result for the intentionally deferred startup pass, allowing CPU image initialization to continue. NOP would retain an unrelated x0 value.',
+        'retained_clocks': [], 'retained_resource_count': 0,
+        'deferred_temporary_clocks': clocks,
+        'cesta_media_startup_deferred': True,
+        'runtime_clock_interfaces_preserved': True,
+        'dcd_startup_dependencies_deferred': True,
+        'dcd_startup_control_rva': DCD_STARTUP_CONTROL_RVA,
+        'cpu_scmi_initialization_preserved': True,
+        'deferred_auto_sources': ['cam_cc_pll3','cam_cc_pll4','cam_cc_pll5',
+                                 'disp_cc_pll0','eva_cc_pll0','video_cc_pll0'],
         'display_only': False, 'owned_retirement_claimed': False,
         'display_cesta_auto_init_deferred': True, 'display_pll_auto_init_deferred': True,
         'full_display_preservation_claimed': False,
         'display_cesta_auto_init': {'descriptor_rva': DISPLAY_CESTA_RVA,
                                    'flag_rva': DISPLAY_CESTA_FLAG_RVA,
-                                   'original_bytes_hex': '01000000', 'derived_bytes_hex': '00000000'},
+                                   'original_bytes_hex': '01000000', 'derived_bytes_hex': '01000000',
+                                   'configuration_preserved': True},
         'display_pll_auto_init': {'node_rva': DISPLAY_PLL_RVA, 'name': 'disp_cc_pll0',
                                  'flags_rva': DISPLAY_PLL_FLAGS_RVA,
-                                 'original_bytes_hex': '00400004', 'derived_bytes_hex': '00400000',
-                                 'cleared_bit': 26, 'preserved_bit14': True},
-        'software_state_limit': 'Display CESTA tables and PLL initialized/active-config state are deferred, not fabricated. Later explicit display consumers may initialize them; inherited hardware state and UFS/USB behavior require verification.',
+                                 'original_bytes_hex': '00400004', 'derived_bytes_hex': '00400004',
+                                 'configuration_preserved': True},
+        'software_state_limit': 'Automatic media startup is deferred, not represented as initialized. Clock source metadata and runtime APIs remain available; physical display and UFS/USB require verification.',
         'automatic_exit_release_verified': False, 'register_writes_added': False,
         'protocol_abi_unchanged': True, 'protocol_callback_table_unchanged': True,
         'changed_byte_count': len(changed), 'protocol_version': 0x1000b,

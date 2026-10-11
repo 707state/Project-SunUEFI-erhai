@@ -6,11 +6,11 @@
 
 屏幕默认以 120 Hz 冷启动，保留其他刷新率模式。运行中切换刷新率，或关屏、合盖后再亮屏，可能出现黑屏而背光仍亮。目前通常需要重启恢复。在修好之前，建议保持默认 120 Hz，并避免合盖和手动关屏。修正已在推进，见[显示](../devel/piano-display-depth.md)。
 
-## UEFI 阶段屏幕白屏
+## UEFI 菜单与 USB
 
-集成版本在 UEFI 阶段物理屏幕可能是白的，但导出的屏幕截图内容正确，说明显示内容没有出错。Linux 启动后由 Linux 驱动重新点亮屏幕，桌面正常。原因还没有找到。
+UEFI 菜单白屏已修复，SimpleInit 和 TianoCore 设置页面可以显示。设置页面的字号和输入仍在改善；合体 BOOT 冷启动进入 UEFI 时，USB 调试接口仍可能无法连接。
 
-白屏时先判断固件是否在运行：
+如果电脑能识别 UEFI 设备，可以查询固件：
 
 ```sh
 fastboot -s SunUEFI-piano getvar product
@@ -38,9 +38,9 @@ fastboot -s SunUEFI-piano getvar product
 
 ## 蓝牙
 
-安装器会自动配置本机蓝牙地址。手工拷贝镜像而不经过安装器时，还需要按[蓝牙地址配置](../devel/piano-bluetooth.md)完成这一步。触控笔输入仍需单独适配。
+Linux 启动时自动读取本机原厂蓝牙地址，手工刷写通用镜像也不需要单独填写地址。触控笔在默认 120 Hz 下支持定位、压感、轻捏和震动；其他限制见[笔协议](../devel/piano-pen-protocol.md)。
 
-## 触控笔、指纹、HDR、Windows
+## 指纹、HDR、Windows
 
 这些功能没有完成，见首页的[尚未完成](../../README.md#尚未完成)。
 

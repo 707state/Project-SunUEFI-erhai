@@ -54,6 +54,7 @@ STATIC EFI_STATUS ClockTracePrepare(VOID *Source,UINTN Bytes){
   UINT8 *Raw=Source;
   for(UINTN I=0;I<ARRAY_SIZE(mClockTraceSites);++I){
     UINT32 Word;CopyMem(&Word,Raw+mClockTraceSites[I].Site,4);
+    if(I==4&&Word==0x52800000U)continue; // Product intentionally defers this pass.
     if(Word!=ClockTraceBranch(mClockTraceSites[I].Site,mClockTraceSites[I].Callee))return EFI_COMPROMISED_DATA;
   }
   UINTN StubEnd=0x27800+ARRAY_SIZE(mClockTraceSites)*16;
@@ -73,6 +74,7 @@ STATIC EFI_STATUS ClockTracePrepare(VOID *Source,UINTN Bytes){
   }
   for(UINTN I=0;I<ARRAY_SIZE(mClockTraceSites);++I){
     UINT32 Stub=0x27800+(UINT32)I*16;
+    if(I==4){UINT32 Word;CopyMem(&Word,Raw+mClockTraceSites[I].Site,4);if(Word==0x52800000U)continue;}
     UINT32 Instructions[]={0x58000050,0xd61f0200}; // LDR x16,+8; BR x16
     UINT64 Callback=(UINT64)(UINTN)mClockTraceCallbacks[I];
     CopyMem(Raw+Stub,Instructions,8);CopyMem(Raw+Stub+8,&Callback,8);

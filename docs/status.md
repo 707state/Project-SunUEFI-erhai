@@ -1,6 +1,6 @@
 # 项目状态
 
-更新日期：2026-10-10。本页按功能列出当前状态。首页的表格是它的简化版；各项的技术细节在 `docs/devel/` 的对应页面中。
+更新日期：2026-10-12。本页按功能列出当前状态。首页的表格是它的简化版；各项的技术细节在 `docs/devel/` 的对应页面中。
 
 ## 测试设备
 
@@ -28,8 +28,8 @@
 | --- | --- |
 | 存储与保护 | 能读取 UFS 的 GPT、BlockIO 和 ESP 文件；原厂关键分区由代码强制只读 |
 | 交接与退出 | 启动 Linux 前清理 USB、UFS、时钟与 SMMU，无法确认安全时拒绝交接 |
-| 显示 | GOP 帧缓冲内容正确（截图可证），但集成版本的物理屏幕白屏，原因没有确定。进入 Linux 后由 Linux 驱动重新显示 |
-| 菜单 / Setup / Shell | 旧版 SimpleInit 中文菜单和实体按键可用；当前集成版本受白屏影响 |
+| 显示 | 合体 BOOT 进入 UEFI 后可显示菜单；延后原厂 ClockDxe 的 CESTA/media 和 DCD 启动初始化，保留继承的显示状态。见[显示定位](devel/uefi-display-checkpoints.md) |
+| 菜单 / Setup / Shell | SimpleInit 中文菜单和实体按键可用，TianoCore 设置页面可显示；设置页面的字号、中文与按键接入正在改善，Shell 尚未完成实机验证 |
 | 触屏、键盘、USB Host | UEFI 阶段没有完成，不使用 Linux 的结果代替 |
 | UEFI Fastboot | 已实现：`oem status`、`oem ramlog`、`oem screenshot`、只读 `fetch`、`stage`（≤64 MiB）、`oem boot-stable`、`reboot`。拒绝 `flash`/`erase`。冷启动合体 BOOT 进入时 USB 初始化曾超时；完整命令见[UEFI Fastboot](user/fastboot.md) |
 | EFI 变量 | 保存在内存，没有持久存储 |

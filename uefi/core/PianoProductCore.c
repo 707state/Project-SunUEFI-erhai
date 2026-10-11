@@ -245,7 +245,7 @@ EFI_STATUS EFIAPI PianoProductCoreEntry(EFI_HANDLE Image,EFI_SYSTEM_TABLE *Syste
   ObserveDisplay("after-foundation");
   if(mStartupTarget==1)(VOID)PianoProductDisplayCheckpoint("AFTER DRIVERS",2);
   mDisplayStartup=(PIANO_PRODUCT_DISPLAY_STARTUP_REPORT){.Revision=1,.KnownNoSideEffects=TRUE,.Status=EFI_NOT_STARTED};
-  DEBUG((DEBUG_WARN,"PIANO_PRODUCT_DISPLAY_START status=%r inherited_gop=1 display_owner_refs=0 native_cesta_retention=7 display_cesta_auto_init_deferred=1 display_pll_auto_init_deferred=1 native_refs_exit_release_verified=0\n",mDisplayStartup.Status));
+  DEBUG((DEBUG_WARN,"PIANO_PRODUCT_DISPLAY_START status=%r inherited_gop=1 display_owner_refs=0 unused_cesta_media_startup_deferred=1 dcd_startup_dependencies_deferred=1 runtime_clock_api_preserved=1\n",mDisplayStartup.Status));
   ObserveDisplay("after-display-lease");
   // Real protected SMEM observations precede product DMA owners. Failure with
   // exact handler cleanup leaves data unknown; retained ownership cannot be
