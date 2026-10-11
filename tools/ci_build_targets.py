@@ -50,7 +50,9 @@ def select(files, manual=None):
         elif name.startswith(FULL_PREFIXES):
             # Full already builds UEFI, kernel, Mesa, sensors, root and installer.
             return ['debian-gnome']
-    return ['uefi'] if uefi else []
+    # A normal product push always delivers the matching module, ESP and root.
+    # Firmware/kernel-only builds remain explicit maintainer dispatch options.
+    return ['debian-gnome'] if uefi else []
 
 
 def changed_files(root, before):

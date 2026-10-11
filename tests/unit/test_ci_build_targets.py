@@ -13,12 +13,12 @@ import ci_build_targets as targets
 
 class CiBuildTargetsTests(unittest.TestCase):
     def test_domains_and_shared_inputs(self):
-        self.assertEqual(targets.select(['uefi/core/PianoProductCore.c']), ['uefi'])
+        self.assertEqual(targets.select(['uefi/core/PianoProductCore.c']), ['debian-gnome'])
         self.assertEqual(targets.select(['linux/dts/piano-audio-dmic-clock.dtso']), ['debian-gnome'])
         self.assertEqual(targets.select(['config/release.json']), ['debian-gnome'])
         self.assertEqual(targets.select(['sources.lock.json']), ['debian-gnome'])
-        self.assertEqual(targets.select(['tools/build_simpleinit.sh']), ['uefi'])
-        self.assertEqual(targets.select(['patches/firmware/series.json']), ['uefi'])
+        self.assertEqual(targets.select(['tools/build_simpleinit.sh']), ['debian-gnome'])
+        self.assertEqual(targets.select(['patches/firmware/series.json']), ['debian-gnome'])
         self.assertEqual(targets.select(['upstream/piano-mesa-current']), ['debian-gnome'])
         self.assertEqual(targets.select(['patches/piano-sensors/import.patch']), ['debian-gnome'])
         self.assertEqual(targets.select(['android/native/piano-boot-request.c']), ['debian-gnome'])
