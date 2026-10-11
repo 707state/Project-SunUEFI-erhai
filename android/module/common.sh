@@ -3,12 +3,28 @@
 piano_fail() { ui_print "! $*"; return 1; }
 piano_read_key() {
   command -v getevent >/dev/null && command -v timeout >/dev/null || return 1
-  event=$(timeout 15 getevent -qlc 1 2>/dev/null) || return 1
-  case "$event" in
-    *KEY_VOLUMEUP*DOWN*|*" 0001 0073 00000001"*) echo up ;;
-    *KEY_VOLUMEDOWN*DOWN*|*" 0001 0072 00000001"*) echo down ;;
-    *) echo ignored ;;
-  esac
+  deadline=$(($(date +%s) + 30))
+  while :; do
+    remaining=$((deadline - $(date +%s)))
+    [ "$remaining" -gt 0 ] || return 1
+    event=$(timeout "$remaining" getevent -qlc 1 2>/dev/null) || return 1
+    case "$event" in
+      *KEY_VOLUMEUP*DOWN*|*" 0001 0073 00000001"*) echo up; return ;;
+      *KEY_VOLUMEDOWN*DOWN*|*" 0001 0072 00000001"*) echo down; return ;;
+    esac
+  done
+}
+piano_choose_boot_install() {
+  ui_print "音量＋：安装或更新 SunUEFI 引导。"
+  ui_print "音量－：只安装引导助手，不修改 BOOT。"
+  ui_print "30 秒未选择时，只安装引导助手。"
+  key=$(piano_read_key) || key=down
+  if [ "$key" = up ]; then
+    ui_print "已选择安装或更新引导。"
+    return 0
+  fi
+  ui_print "已选择只安装引导助手，可稍后在维护页安装引导。"
+  return 1
 }
 piano_partition_state() {
   esp=0; root=0
