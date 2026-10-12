@@ -363,7 +363,10 @@ class Device:
     def flash(self, identity, partition, image):
         require(partition['name'] in PARTITIONS, 'Only dedicated OS partitions may be flashed')
         self.check_fastboot(identity, partition)
-        self.call(['fastboot', '-s', identity['factory_serial'], 'flash', partition['name'], str(image)], timeout=1800)
+        # Piano ABL can stop responding to a single 512 MiB raw ESP write.
+        # Let standard fastboot sparsify/split images into bounded transfers.
+        self.call(['fastboot', '-s', identity['factory_serial'], '-S', '128M',
+                   'flash', partition['name'], str(image)], timeout=1800)
 
     def reboot_android(self, identity):
         self.call(['fastboot', '-s', identity['factory_serial'], 'reboot'])
