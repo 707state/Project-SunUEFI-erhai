@@ -47,14 +47,16 @@
 
 首次分区尚未完成实机验证，相关限制见[已知问题](docs/user/known-issues.md#首次分区)。详细操作见[安装指南](docs/user/install-from-artifact.md)；[电脑安装](docs/user/install-from-computer.md)与[临时启动](docs/user/temporary-boot.md)作为备用方式保留。Magisk 用户打开助手的方法见[模块说明](docs/devel/android-module.md)。
 
-| Linux 默认登录 | 内容 |
+| 登录平板的 Linux 系统 | 默认账号密码 |
 | --- | --- |
 | 用户名 | `piano` |
 | 密码 | `piano123456` |
 
-桌面默认自动登录，锁屏解锁和 `sudo` 使用上述密码，可在系统设置中修改。当前 Linux 内核和系统服务启动约 39 秒，不含开机选择页与 UEFI；首次启动可能更久。
+在登录页面选择 `piano`，输入密码 `piano123456` 即可进入桌面。系统默认自动登录；锁屏解锁和 `sudo` 也使用这个密码，可在系统设置中修改。
 
-仅临时运行 UEFI 时，另下载 **`SunUEFI-UEFI-Fastboot-提交号`**，解压后执行 `fastboot boot PianoUEFI-product.img`。这是不含原厂 Android 内核的独立镜像，与助手里的 UEFI 使用同一核心；不会安装 Linux 或改写 BOOT。操作说明见[临时启动固件](docs/user/temporary-boot.md)。
+当前 Linux 内核和系统服务启动约 39 秒，不含开机选择页与 UEFI；首次启动可能更久。
+
+仅临时运行 UEFI 时，另下载 **`SunUEFI-UEFI-Fastboot(MembootTest)-提交号`**，解压后执行 `fastboot boot PianoUEFI-product.img`。这是不含原厂 Android 内核的独立镜像，与助手里的 UEFI 使用同一核心；不会安装 Linux 或改写 BOOT。操作说明见[临时启动固件](docs/user/temporary-boot.md)。
 
 HyperOS 更新后，在助手的 **维护** 页点击 **重新安装引导**。想回 Android，可以在开机选择页按音量＋选择 Android、短按电源确认；Linux 下也可运行 `piano-next-boot android --reboot`。遇到无法启动的情况，见[故障恢复](docs/user/recovery.md)。
 
@@ -126,13 +128,11 @@ SunUEFI 运行时在后台提供一个 USB Fastboot 服务，设备名为 `SunUE
 | 电池与充电状态 | 双电池、基础 PD 充电和 UPower 状态 |
 | 默认桌面 | 中文界面、拼音输入法、Chromium 浏览器，GNOME 动画开启 |
 
-Linux 默认用户名：`piano`，密码：`piano123456`。桌面自动登录，锁屏和 `sudo` 使用此密码；修改密码可运行 `passwd`。
-
 ### 可以使用，但有问题
 
 | 功能 | 能做到什么 | 现存问题 |
 | --- | --- | --- |
-| 刷新率 | 默认 120 Hz，保留其他显示模式 | 切换刷新率，或关屏、合盖后恢复，可能黑屏、背光仍亮 |
+| 刷新率 | 默认 120 Hz，保留其他显示模式 | 切换刷新率后仍会黑屏，通常需要重启恢复，请保持默认 120 Hz |
 | 相机 | 前后摄像头预览与录像，走高通 CAMSS/TFE 硬件 ISP，3A（自动曝光 / 对焦 / 白平衡）由软件实现 | 首帧、曝光、对焦和画质仍在改善，与原厂有差距；完整专业模式尚未提供 |
 | 麦克风 | 录音、回放，原生单声道输入 | 底噪和桌面输入电平仍需调校 |
 | 传感器 | 加速度、光线、罗盘、距离等数据可读，并接入标准的 SensorProxy | 自动旋转、自动亮度曲线等桌面联动还在完善；陀螺仪等数据的单位和标准接口未全部完成 |

@@ -16,7 +16,7 @@
 
 将模块 ZIP 和两个 `.img` 文件保存在平板上。模块 ZIP 不要再解压；两个镜像可以放在任意方便的位置，之后通过文件选择器选取。手动选择 `uefi` 或 `linux` 的开发构建不包含完整系统。
 
-此外还有可选的 `SunUEFI-UEFI-Fastboot-提交号`，包含独立的
+此外还有可选的 `SunUEFI-UEFI-Fastboot(MembootTest)-提交号`，包含独立的
 `PianoUEFI-product.img`，供 `fastboot boot` 临时启动 UEFI 使用。
 助手安装流程不需要下载它，见[临时启动固件](temporary-boot.md)。
 
