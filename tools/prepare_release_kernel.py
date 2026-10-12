@@ -41,7 +41,7 @@ TARGETS[DEFAULT_TARGET] = {
     **TARGETS['kernel69'],
     'series_target': 'kernel69',
     'patch_tree': TARGETS['kernel69']['target_tree'],
-    'target_tree': 'b19acb2bb48722a4f0e5739d1281eeb52ddc1830',
+    'target_tree': '935db185d6236e58be2ed11ac6a2d3c49c652318',
     'stable_commit': '5fce161649b4d779d1b76d9fcd52dc77779774b8',
     'stable_tree': 'c278d1443495d2a1a07fff2bcfb286b5c35baaea',
     'stable_version': '7.2.9',
@@ -130,6 +130,14 @@ TARGETS[DEFAULT_TARGET] = {
     'piano_function_row_patch': {
         'file': 'patches/linux/7.2.9/0023-nanosic-piano-right-ctrl-function-row.patch',
         'sha256': '2ce7e5dfedf1711a835797c694e86374c3483ad790a145e61d87610f63f8feb4',
+    },
+    'dsi_pll_registration_patch': {
+        'file': 'patches/linux/7.2.9/0024-dsi-pll-defer-unprogrammed-clock.patch',
+        'sha256': '669f2257c6a904201ab842788b9b53cfe72b288ad5b9701d9e7175299b171d16',
+    },
+    'dsi_slave_restore_patch': {
+        'file': 'patches/linux/7.2.9/0025-dsi-sm8750-restore-bonded-slave.patch',
+        'sha256': '84b20af17904b785f222f722f5588b5325110beeffc1e370bc045cf43684840a',
     },
     'dsi_stop_order_patch': {
         'file': 'patches/linux/7.2.9/0008-dsi-bonded-stop-slave-first.patch',
@@ -298,7 +306,7 @@ def write_manifest(path, record):
 
 def update_patches(root, policy):
     result = {}
-    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch'):
+    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch', 'dsi_pll_registration_patch', 'dsi_slave_restore_patch'):
         if key not in policy:
             continue
         row = policy[key]
@@ -360,6 +368,8 @@ def merge_stable(work, policy, paths):
         ('p81c_pressure_hid_patch', 'fix(hid): do not map P81C pressure to keyboard plus', 'p81c_pressure_hid_commit'),
         ('piano_preferred_120hz_patch', 'fix(panel): prefer Piano 120 Hz cold-start mode', 'piano_preferred_120hz_commit'),
         ('piano_function_row_patch', 'feat(hid): add Piano right Ctrl function row', 'piano_function_row_commit'),
+        ('dsi_pll_registration_patch', 'fix(drm): defer unprogrammed DSI PLL during provider registration', 'dsi_pll_registration_commit'),
+        ('dsi_slave_restore_patch', 'fix(drm): restore SM8750 bonded slave clock state', 'dsi_slave_restore_commit'),
     ):
         if key not in paths:
             continue
