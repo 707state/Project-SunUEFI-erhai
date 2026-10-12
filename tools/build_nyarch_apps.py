@@ -26,7 +26,7 @@ PACKAGES = (
     'alsa-utils', 'alsa-ucm-conf', 'pipewire-audio', 'pipewire-pulse',
     'gst-plugin-pipewire', 'gst-plugins-good', 'gst-plugins-bad', 'ffmpeg',
     'v4l-utils', 'python-pillow', 'python-numpy', 'zram-generator',
-    'gnome-console', 'gnome-text-editor', 'gnome-tweaks', 'snapshot',
+    'gnome-console', 'gnome-text-editor', 'gnome-tweaks', 'gnome-keyring', 'snapshot',
     'vulkan-freedreno', 'mesa-utils', 'vulkan-tools', 'polkit', 'busybox',
 )
 

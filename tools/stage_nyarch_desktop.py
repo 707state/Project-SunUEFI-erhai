@@ -13,7 +13,7 @@ from stage_piano_full_userspace import stage_gnome_power
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def stage(root, source):
+def stage(root, source, extensions=None):
     root, source = root.resolve(), source.resolve()
     if not root.is_relative_to(ROOT / 'build/distros'):
         raise ValueError('Use a project-built rootfs')
@@ -45,6 +45,27 @@ def stage(root, source):
         "picture-uri-dark='file:///usr/share/backgrounds/Nyarch_Wallpaper.png'\n\n"
         "[org/gnome/shell]\nfavorite-apps=['org.gnome.Nautilus.desktop', "
         "'chromium.desktop', 'org.gnome.Console.desktop', 'moe.nyarchlinux.customize.desktop']\n")
+    if extensions:
+        enabled = []
+        for folder in sorted(extensions.iterdir()):
+            if not folder.is_dir() or not (folder / 'metadata.json').is_file():
+                continue
+            metadata = json.loads((folder / 'metadata.json').read_text())
+            if '51' not in metadata.get('shell-version', []):
+                raise ValueError('Extension has no GNOME 51 support: ' + folder.name)
+            shutil.copytree(folder, root / 'usr/share/gnome-shell/extensions' / folder.name,
+                            symlinks=True, dirs_exist_ok=True)
+            enabled.append(metadata['uuid'])
+        if 'blur-my-shell@aunetx' not in enabled:
+            raise ValueError('Nyarch desktop requires Blur my Shell')
+        with dconf.open('a') as stream:
+            stream.write('\nenabled-extensions=' + repr(enabled) +
+                         '\ndisable-user-extensions=false\n'
+                         '\n[org/gnome/shell/extensions/user-theme]\nname=\'MaterialYou\'\n'
+                         '\n[org/gnome/shell/extensions/blur-my-shell/panel]\nforce-light-text=true\n'
+                         '\n[org/gnome/shell/extensions/dash-to-dock]\n'
+                         'dock-position=\'BOTTOM\'\ndash-max-icon-size=48\n'
+                         'height-fraction=0.9\n')
     # Keep ID=arch so pacman-based desktop tools choose the right backend.
     release = root / 'usr/lib/os-release'
     text = release.read_text()
@@ -77,6 +98,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--rootfs', type=Path, required=True)
     parser.add_argument('--source', type=Path, required=True)
+    parser.add_argument('--extensions', type=Path)
     args = parser.parse_args()
     # Caller uses unshare; mount lifetime is limited to guest_environment.
-    stage(args.rootfs, args.source)
+    stage(args.rootfs, args.source, args.extensions)

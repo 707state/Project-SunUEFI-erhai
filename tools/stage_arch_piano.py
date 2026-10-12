@@ -87,6 +87,7 @@ def stage(args):
         if subprocess.check_output(['chroot', root, 'id', '-u', 'piano'], text=True).strip() != '1000':
             guest(['usermod', '-u', '1000', 'piano'])
         guest(['chown', '-R', 'piano:piano', '/home/piano'])
+        guest(['usermod', '-aG', 'audio,video,input,render', 'piano'])
         guest(['chpasswd'], input='piano:' + cfg['login']['password'] + '\n', text=True)
         guest(['systemctl', 'mask', 'sleep.target', 'suspend.target', 'hibernate.target',
                'hybrid-sleep.target', 'suspend-then-hibernate.target',

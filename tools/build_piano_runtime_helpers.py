@@ -52,6 +52,7 @@ CAMERAD_AE_PATCH=ROOT/'tools/patches/piano-camerad-stable-ae.patch'
 CAMERAD_FRAME_PATCH=ROOT/'tools/patches/piano-camerad-frame-integrity.patch'
 CAMERAD_MANUAL_PATCH=ROOT/'tools/patches/piano-camerad-manual-controls.patch'
 CAMERAD_TIMING_PATCH=ROOT/'tools/patches/piano-camerad-front-exposure-time.patch'
+CAMERAD_GROUP_PATCH=ROOT/'tools/patches/piano-camerad-local-video-group.patch'
 
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -106,7 +107,7 @@ def derive_camerad_source(public, output):
     folder=Path(output)/'piano-camera-source';target=folder/relative
     target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(original,target)
     patches=[]
-    for patch in (CAMERAD_CCM_PATCH,CAMERAD_AE_PATCH,CAMERAD_FRAME_PATCH,CAMERAD_MANUAL_PATCH,CAMERAD_TIMING_PATCH):
+    for patch in (CAMERAD_CCM_PATCH,CAMERAD_AE_PATCH,CAMERAD_FRAME_PATCH,CAMERAD_MANUAL_PATCH,CAMERAD_TIMING_PATCH,CAMERAD_GROUP_PATCH):
         # This generated directory is inside the parent Git checkout. Git can
         # silently skip a git-format patch whose paths lie outside that prefix.
         # Apply the standard patch to this standalone source copy instead.
