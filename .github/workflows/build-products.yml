@@ -101,6 +101,7 @@ jobs:
                   ./build.sh linux
                   ;;
                 debian-gnome)
+                  python3 -c "import sys; sys.path.insert(0, \"tools\"); from build_release_rootfs import require_host; require_host()"
                   ./build.sh uefi
                   ./build.sh module
                   ./build.sh linux
