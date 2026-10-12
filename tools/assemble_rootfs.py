@@ -82,6 +82,7 @@ def plan(args, root=ROOT):
         raise ValueError('Scale is 100..300%; GNOME lightweight integer defaults accept 100/200/300')
     for key in ('base_url', 'base_sha256', 'base_signature_url', 'base_keyring', 'base_keyring_sha256', 'keyring', 'sources_list'):
         result[key] = getattr(args, key, None) or profile.get(key)
+    result['base_file'] = str(args.base_file.resolve()) if getattr(args, 'base_file', None) else None
     if profile['backend'] != 'debootstrap':
         required = ['base_url', 'base_sha256'] if args.distro == 'arch' else profile['required_inputs']
         for key in required:
@@ -131,11 +132,22 @@ def deepin_sources(text, suite):
 
 def clean_identity(root, guest):
     if not guest(['getent', 'passwd', 'piano'], check=False).returncode == 0:
+        # The ARM bootstrap's demo account otherwise consumes the desktop UID.
+        if guest(['getent', 'passwd', 'alarm'], check=False).returncode == 0:
+            guest(['userdel', '-r', 'alarm'])
         guest(['useradd', '-m', '-s', '/bin/bash', 'piano'])
     accounts = guest(['getent', 'passwd'], text=True)
     for line in accounts.splitlines():
         fields = line.split(':')
         if len(fields) > 2 and (fields[0] == 'root' or 1000 <= int(fields[2]) < 60000): guest(['usermod', '--password', '!', fields[0]])
+    login = json.loads((ROOT / 'config/release.json').read_text())['login']
+    if login['user'] != 'piano':
+        raise ValueError('Desktop account must match the shared release login')
+    guest(['chpasswd'], input='piano:' + login['password'] + '\n')
+    sudoers = inside(root, root / 'etc/sudoers.d/10-piano')
+    sudoers.parent.mkdir(parents=True, exist_ok=True)
+    sudoers.write_text('piano ALL=(ALL:ALL) ALL\n')
+    sudoers.chmod(0o440)
     for path in inside(root, root / 'etc/ssh/placeholder').parent.glob('ssh_host_*'):
         if path.is_file() or path.is_symlink(): path.unlink()
     for home in [root / 'root', *(root / 'home').glob('*')]:
@@ -153,7 +165,8 @@ def clean_identity(root, guest):
     if growfs_mask.is_symlink() and growfs_mask.readlink() == Path('/dev/null'):
         growfs_mask.unlink()
     setup = inside(root, root / 'home/piano/FIRST-SETUP.txt'); setup.parent.mkdir(parents=True, exist_ok=True)
-    setup.write_text('No factory password is retained. Set your own piano password using the installer or a trusted root console before privileged desktop tasks.\n')
+    setup.write_text('默认用户：piano\n默认密码：' + login['password'] +
+                     '\n登录、解锁和 sudo 使用此密码，可在系统设置中修改。\n')
 
 
 def configure_desktop(root, result, guest, optional):
@@ -190,13 +203,19 @@ def execute(result):
     out = Path(result['output']); root = out / 'rootfs'; profile = result['profile']; arch = profile['package_arch']
     if out.exists(): raise ValueError('Output appeared after planning')
     out.mkdir(parents=True); root.mkdir(); mounted = []; log = out / 'build.log'
+    cross = platform.machine() not in ('aarch64', 'arm64')
     def run(args, **kwargs):
         with log.open('a') as stream: return subprocess.run(list(map(str, args)), stdout=stream, stderr=subprocess.STDOUT, check=True, **kwargs)
-    def guest(args, text=False, check=True):
+    def guest(args, text=False, check=True, input=None):
+        if args[0] == 'pacman':
+            # QEMU user-mode cannot implement pacman's Landlock syscalls.
+            # This applies only to the build chroot, not its installed config.
+            args = [args[0], '--config', '/run/pacman-build.conf',
+                    *(['--disable-sandbox'] if cross else []), *args[1:]]
         argv = ['chroot', str(root), '/usr/bin/env', 'PATH=/usr/sbin:/usr/bin:/sbin:/bin', 'SYSTEMD_OFFLINE=1', 'DEBIAN_FRONTEND=noninteractive', *args]
         if text: return subprocess.check_output(argv, text=True)
         if not check: return subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return run(argv)
+        return run(argv, input=input, text=input is not None)
     try:
         if profile['backend'] == 'debootstrap':
             key = Path(result['keyring']);
@@ -204,7 +223,11 @@ def execute(result):
             run(['debootstrap', '--foreign', '--arch=' + arch, '--include=ca-certificates', '--components=' + ','.join(profile['components']),
                  '--force-check-gpg', '--keyring=' + str(key), result['target']['suite'], root, profile['mirror']])
         else:
-            base = out / 'base.tar'; run(['curl', '-fL', '--proto', '=https', '--output', base, result['base_url']])
+            base = out / 'base.tar'
+            if result.get('base_file'):
+                shutil.copyfile(result['base_file'], base)
+            else:
+                run(['curl', '-fL', '--proto', '=https', '--output', base, result['base_url']])
             if sha(base) != result['base_sha256']: raise ValueError('Downloaded base digest differs')
             if profile['id'] == 'deepin':
                 key = Path(result['base_keyring'])
@@ -212,7 +235,6 @@ def execute(result):
                 sig = out / 'base.sig'; run(['curl', '-fL', '--proto', '=https', '--output', sig, result['base_signature_url']])
                 run(['gpgv', '--keyring', key, sig, base])
             validate_archive(base); run(['bsdtar', '-xpf', base, '-C', root])
-        cross = platform.machine() not in ('aarch64', 'arm64')
         if cross:
             qemu = shutil.which('qemu-aarch64-static'); entry = Path('/proc/sys/fs/binfmt_misc/qemu-aarch64')
             if not qemu or not entry.is_file() or 'enabled' not in entry.read_text(): raise ValueError('x86 build needs qemu-aarch64-static and enabled binfmt')
@@ -230,6 +252,9 @@ def execute(result):
             path.mkdir(exist_ok=True); run(['mount', '-t', kind, *(['-o', options] if options else []), kind, path]); mounted.append(path)
         for name, major, minor in (('null', 1, 3), ('zero', 1, 5), ('random', 1, 8), ('urandom', 1, 9), ('tty', 5, 0)):
             run(['mknod', '-m', '666', root / 'dev' / name, 'c', str(major), str(minor)])
+        for name, target in (('fd', '/proc/self/fd'), ('stdin', '/proc/self/fd/0'),
+                             ('stdout', '/proc/self/fd/1'), ('stderr', '/proc/self/fd/2')):
+            (root / 'dev' / name).symlink_to(target)
         inside(root, root / 'etc/resolv.conf').unlink(missing_ok=True); shutil.copyfile('/etc/resolv.conf', root / 'etc/resolv.conf')
         policy = inside(root, root / 'usr/sbin/policy-rc.d'); policy.parent.mkdir(parents=True, exist_ok=True); policy.write_text('#!/bin/sh\nexit 101\n'); policy.chmod(0o755)
         manager = 'arch' if profile['id'] == 'arch' else 'apt'
@@ -245,6 +270,10 @@ def execute(result):
             conf = root / 'etc/pacman.conf'; text = conf.read_text()
             if not re.search(r'^\s*SigLevel\s*=\s*Required\b', text, re.M) or re.search(r'^\s*SigLevel\s*=.*Never', text, re.M): raise ValueError('Pacman repository signatures must remain required')
             conf.write_text(re.sub(r'^\s*Architecture\s*=.*$', 'Architecture = aarch64', text, flags=re.M))
+            # libalpm cannot resolve the host mount table's paths from a
+            # chroot. Leave the installed CheckSpace policy unchanged.
+            (root / 'run/pacman-build.conf').write_text(
+                re.sub(r'^\s*CheckSpace\s*$', '# CheckSpace (build chroot)', conf.read_text(), flags=re.M))
             guest(['pacman-key', '--init']); guest(['pacman-key', '--populate', 'archlinuxarm']); guest(['pacman', '-Syu', '--noconfirm'])
         packages = profile['base_packages'] + result['desktop_profile'][manager + '_packages']; optional = []
         for package in packages + result['desktop_profile'].get('optional_packages', []):
@@ -281,12 +310,16 @@ def execute(result):
         if cross: (root / 'usr/bin/qemu-aarch64-static').unlink()
         result.update(status='HOST_ROOTFS_DESKTOP_BSP_BUILT_NOT_BOOT_VERIFIED' if result['bsp'] else 'HOST_ROOTFS_DESKTOP_BUILT_BSP_PENDING',
                       rootfs=str(root), packages_sha256=sha(out / 'packages.tsv'), optional_packages_installed=optional,
-                      generic_kernels_removed=generic, password='factory passwords locked; owner must set their own', bit_reproducible=False)
+                      generic_kernels_removed=generic,
+                      login=json.loads((ROOT / 'config/release.json').read_text())['login'],
+                      bit_reproducible=False)
         metadata = [*(root / 'var/lib/apt/lists').glob('*InRelease'), *(root / 'etc/apt').rglob('*.list'), *(root / 'etc/apt').rglob('*.sources')] if manager == 'apt' else list((root / 'var/lib/pacman/sync').glob('*'))
         result['repository_metadata'] = {str(p.relative_to(root)): sha(p) for p in metadata if p.is_file()}
     except Exception as exc:
         (out / 'FAILED.json').write_text(json.dumps({'status': 'BUILD_FAILED', 'error': str(exc)}) + '\n'); raise
     finally:
+        if profile['id'] == 'arch' and (root / 'usr/bin/gpgconf').exists():
+            guest(['gpgconf', '--homedir', '/etc/pacman.d/gnupg', '--kill', 'all'], check=False)
         for path in reversed(mounted): run(['umount', path])
     for name in ('dev', 'proc', 'sys', 'run'):
         for path in (root / name).iterdir():
@@ -299,7 +332,7 @@ def parser():
     value = argparse.ArgumentParser(description=__doc__)
     value.add_argument('--distro', choices=['debian', 'ubuntu', 'arch', 'deepin'], required=True)
     value.add_argument('--desktop', choices=['gnome', 'kde', 'dde'], required=True)
-    for name in ('output', 'base-keyring', 'keyring', 'sources-list', 'bsp'): value.add_argument('--' + name, type=Path)
+    for name in ('output', 'base-file', 'base-keyring', 'keyring', 'sources-list', 'bsp'): value.add_argument('--' + name, type=Path)
     for name in ('suite', 'base-url', 'base-sha256', 'base-signature-url', 'base-keyring-sha256'): value.add_argument('--' + name)
     value.add_argument('--layer', action='append', type=Path, default=[]); value.add_argument('--scale-percent', type=int, default=200)
     mode = value.add_mutually_exclusive_group(required=True); mode.add_argument('--plan', action='store_true'); mode.add_argument('--execute', action='store_true')

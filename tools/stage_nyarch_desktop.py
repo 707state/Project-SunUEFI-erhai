@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Apply the selected Nyarch desktop assets and shared Piano defaults."""
+import argparse
+import hashlib
+import json
+import shutil
+import subprocess
+from pathlib import Path
+
+from build_nyarch_apps import guest_environment
+from stage_piano_full_userspace import stage_gnome_power
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def stage(root, source):
+    root, source = root.resolve(), source.resolve()
+    if not root.is_relative_to(ROOT / 'build/distros'):
+        raise ValueError('Use a project-built rootfs')
+    commit = subprocess.check_output(['git', '-C', source, 'rev-parse', 'HEAD'], text=True).strip()
+    if subprocess.check_output(['git', '-C', source, 'status', '--porcelain'], text=True):
+        raise ValueError('Nyarch asset source must be clean')
+    origin = source / 'Gnome/etc/skel/.local/share'
+    inputs = {}
+    for folder in ('themes', 'icons', 'backgrounds'):
+        src = origin / folder
+        dst = root / 'usr/share' / folder
+        shutil.copytree(src, dst, symlinks=True, dirs_exist_ok=True)
+        for path in src.rglob('*'):
+            if path.is_file() and not path.is_symlink():
+                inputs[str(path.relative_to(source))] = hashlib.sha256(path.read_bytes()).hexdigest()
+    license_file = root / 'usr/share/licenses/nyarch-desktop/LICENSE'
+    license_file.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source / 'LICENSE', license_file)
+    # Preserve tablet defaults; no x86-only Node addons or forced incompatible
+    # extensions are imported from the upstream desktop skeleton.
+    stage_gnome_power(root)
+    dconf = root / 'etc/dconf/db/local.d/10-nyarch'
+    dconf.write_text(
+        "[org/gnome/desktop/interface]\n"
+        "gtk-theme='adw-gtk3'\nicon-theme='Tela-circle-MaterialYou'\n"
+        "color-scheme='prefer-dark'\nenable-animations=true\n\n"
+        "[org/gnome/desktop/background]\npicture-options='zoom'\n"
+        "picture-uri='file:///usr/share/backgrounds/Nyarch_Wallpaper.png'\n"
+        "picture-uri-dark='file:///usr/share/backgrounds/Nyarch_Wallpaper.png'\n\n"
+        "[org/gnome/shell]\nfavorite-apps=['org.gnome.Nautilus.desktop', "
+        "'chromium.desktop', 'org.gnome.Console.desktop', 'moe.nyarchlinux.customize.desktop']\n")
+    # Keep ID=arch so pacman-based desktop tools choose the right backend.
+    release = root / 'usr/lib/os-release'
+    text = release.read_text()
+    rows = [line for line in text.splitlines() if not line.startswith(
+        ('NAME=', 'PRETTY_NAME=', 'VARIANT=', 'VARIANT_ID='))]
+    release.write_text('\n'.join(rows) + '\nNAME="Nyarch Linux"\n'
+                       'PRETTY_NAME="Nyarch Linux (SunUEFI ARM64)"\n'
+                       'VARIANT="Piano GNOME"\nVARIANT_ID=sunuefi\n')
+    (root / 'etc/locale.gen').write_text('en_US.UTF-8 UTF-8\nzh_CN.UTF-8 UTF-8\n')
+    (root / 'etc/locale.conf').write_text('LANG=zh_CN.UTF-8\n')
+    (root / 'etc/hostname').write_text('piano\n')
+    (root / 'etc/gdm/custom.conf').write_text(
+        '[daemon]\nAutomaticLoginEnable=true\nAutomaticLogin=piano\n')
+    with guest_environment(root) as guest:
+        guest(['locale-gen'])
+        guest(['dconf', 'update'])
+        guest(['glib-compile-schemas', '/usr/share/glib-2.0/schemas'])
+        guest(['gtk-update-icon-cache', '-f', '-t', '/usr/share/icons/Tela-circle-MaterialYou'])
+    record = {'source_url': 'https://github.com/NyarchLinux/NyarchLinux',
+              'source_commit': commit, 'source_files': inputs,
+              'desktop': 'gnome', 'base': 'Arch Linux ARM rolling',
+              'extension_policy': 'No unsupported x86 binary addons or disabled version checks'}
+    path = root / 'usr/share/piano-provenance/nyarch-desktop.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, indent=2) + '\n')
+    return record
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--rootfs', type=Path, required=True)
+    parser.add_argument('--source', type=Path, required=True)
+    args = parser.parse_args()
+    # Caller uses unshare; mount lifetime is limited to guest_environment.
+    stage(args.rootfs, args.source)

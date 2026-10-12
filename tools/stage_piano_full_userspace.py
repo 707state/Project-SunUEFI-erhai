@@ -59,7 +59,10 @@ def stage_gnome_power(rootfs):
     return copied
 
 
-def stage(rootfs, source):
+def stage(rootfs, source, desktop='gnome'):
+    if desktop not in ('gnome', 'kde'):
+        raise ValueError('Unsupported desktop')
+    from prepare_debian_desktop import gnome_path
     rootfs,source=Path(rootfs).resolve(),Path(source).resolve()
     if not rootfs.is_relative_to(ROOT) or not rootfs.is_dir():
         raise ValueError('Rootfs must be an existing workspace directory')
@@ -71,6 +74,8 @@ def stage(rootfs, source):
     copied={}
     for path in sorted(overlay.rglob('*')):
         name=path.relative_to(overlay)
+        if desktop != 'gnome' and gnome_path(name.as_posix()):
+            continue
         target=rootfs/name
         # Never follow guest-root absolute links while writing on the host.
         if any(parent.is_symlink()for parent in target.parents if parent!=rootfs and parent.is_relative_to(rootfs)):
@@ -85,7 +90,8 @@ def stage(rootfs, source):
             if target.is_symlink():raise ValueError('Refuse writing through guest symlink')
             shutil.copy2(path,target)
             copied[name.as_posix()]=hashlib.sha256(path.read_bytes()).hexdigest()
-    copied.update(stage_gnome_power(rootfs))
+    if desktop == 'gnome':
+        copied.update(stage_gnome_power(rootfs))
     # Use the same camera BSP module policy in the complete default release.
     # The public SoC of:* autoload block otherwise leaves this driver unbound.
     flash_source = ROOT / 'linux/bsp/optional/camera/etc/modules-load.d/piano-flash.conf'

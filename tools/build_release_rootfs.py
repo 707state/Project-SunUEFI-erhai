@@ -44,8 +44,14 @@ def repository(path, commit=None, tree=None):
 
 def plan(kernel, source, output, mesa_dir=None, runtime_dir=None, kernel_build=None,
          public_source=None, firmware_source=None, macros=None, v4l2_source=None, root=ROOT, resume=False,
-         sensors_dir=None, ffmpeg_dir=None, boot_task_snapshot=False):
+         sensors_dir=None, ffmpeg_dir=None, boot_task_snapshot=False, desktop='gnome'):
     root = Path(root).resolve(); config = json.loads((root / 'config/release.json').read_text())
+    if desktop not in ('gnome', 'kde'):
+        raise ValueError('Release desktop must be gnome or kde')
+    if desktop == 'kde':
+        from prepare_debian_desktop import KDE_PACKAGES
+        gnome = {'gnome', 'task-gnome-desktop', 'ibus', 'ibus-libpinyin', 'ibus-gtk', 'ibus-gtk3', 'ibus-gtk4'}
+        config['debian']['extra_packages'] = [p for p in config['debian']['extra_packages'] if p not in gnome] + KDE_PACKAGES
     if config['debian']['apt_policy'] != 'mutable-recorded' or config['debian']['snapshot'] is not None:
         raise ValueError('Only signed mutable APT with recorded metadata is implemented; snapshot mode is not configured')
     kernel, source, output = [Path(p).resolve() for p in (kernel, source, output)]
@@ -57,10 +63,14 @@ def plan(kernel, source, output, mesa_dir=None, runtime_dir=None, kernel_build=N
             raise ValueError('Resume needs a completed upstream base root')
         if (output / 'manifest.json').is_file():
             previous = json.loads((output / 'manifest.json').read_text())
-            if previous.get('status') != 'HOST_BUILT_RELEASE_GNOME_ROOT_NOT_BOOT_VERIFIED' or previous.get('debian_commit') != config['debian']['commit']:
+            if previous.get('status') not in ('HOST_BUILT_RELEASE_GNOME_ROOT_NOT_BOOT_VERIFIED', 'HOST_BUILT_RELEASE_KDE_ROOT_NOT_BOOT_VERIFIED') or previous.get('debian_commit') != config['debian']['commit']:
                 raise ValueError('Completed base root belongs to another source')
+            if previous.get('desktop', 'gnome') != desktop:
+                raise ValueError('Resume must keep the desktop used to build this root')
         elif not (output / 'FAILED.json').is_file():
             raise ValueError('Resume needs an assembly result or failure record')
+        elif json.loads((output / 'FAILED.json').read_text()).get('desktop', 'gnome') != desktop:
+            raise ValueError('Failed base root belongs to another desktop')
     if not kernel.is_relative_to(root / 'artifacts/kernels') or not source.is_relative_to(root / 'build/kernel-worktrees'):
         raise ValueError('Use project release kernel source and artifacts')
     public = Path(public_source or root / config['debian']['source']).resolve()
@@ -98,7 +108,7 @@ def plan(kernel, source, output, mesa_dir=None, runtime_dir=None, kernel_build=N
             raise ValueError('Release kernel must select LABEL=PIANOROOT, never Android userdata')
     if public.is_dir(): repository(public, config['debian']['commit'])
     if firmware.is_dir(): repository(firmware, config['firmware']['commit'])
-    return {'status': 'PLAN_ONLY', 'resume': resume,
+    return {'status': 'PLAN_ONLY', 'resume': resume, 'desktop': desktop,
             'previous_kernel_release': previous.get('kernel_release') if previous else None,
             'root_policy': 'LABEL=PIANOROOT', 'kernel': str(kernel), 'source': str(source),
             'output': str(output), 'rootfs': str(output / 'rootfs'), 'mesa_dir': str(mesa) if mesa else None,
@@ -155,21 +165,23 @@ def put(root, name, text):
     path.parent.mkdir(parents=True, exist_ok=True); path.write_text(text)
 
 
-def default_system_record(rootfs, installed, config):
+def default_system_record(rootfs, installed, config, desktop='gnome'):
     """Require the shipped desktop and BSP, including runtime-bundle resumes."""
-    required = {'gnome-shell', 'gdm3', 'systemd-sysv', 'pipewire', 'network-manager'}
+    required = {'systemd-sysv', 'pipewire', 'network-manager'}
+    required.update({'gnome-shell', 'gdm3'} if desktop == 'gnome' else {'plasma-workspace', 'sddm', 'powerdevil'})
     required.update(config['debian']['extra_packages'])
     missing = sorted(required - installed.keys())
     if missing:
         raise ValueError('Required desktop packages are not installed: ' + ', '.join(missing))
 
     paths = (
-        'etc/dconf/db/local.d/00-sunuefi', 'etc/dconf/db/local',
-        'etc/dconf/profile/user', 'usr/lib/piano/bluetooth-address.py',
+        'usr/lib/piano/bluetooth-address.py',
         'etc/modules-load.d/piano-bluetooth.conf', 'usr/lib/piano/radio-start',
         'usr/share/piano/pen/p81c-radio.json', 'usr/lib/piano/pen-bluetooth',
         'usr/lib/piano/touch-input', 'usr/bin/piano-pen-canvas',
     )
+    paths += (('etc/dconf/db/local.d/00-sunuefi', 'etc/dconf/db/local', 'etc/dconf/profile/user')
+              if desktop == 'gnome' else ('etc/sddm.conf.d/10-sunuefi.conf',))
     files = {}
     for name in paths:
         path = userspace.guest_resolve(rootfs, name)
@@ -177,12 +189,12 @@ def default_system_record(rootfs, installed, config):
             raise ValueError('Required desktop/BSP file is missing: ' + name)
         files[name] = digest(path)
     defaults = ROOT / 'linux/desktops/gnome/defaults.ini'
-    if files['etc/dconf/db/local.d/00-sunuefi'] != digest(defaults):
+    if desktop == 'gnome' and files['etc/dconf/db/local.d/00-sunuefi'] != digest(defaults):
         raise ValueError('Packaged GNOME defaults differ from the desktop source')
-    if 'system-db:local' not in (rootfs / 'etc/dconf/profile/user').read_text().splitlines():
+    if desktop == 'gnome' and 'system-db:local' not in (rootfs / 'etc/dconf/profile/user').read_text().splitlines():
         raise ValueError('GNOME dconf profile does not load the packaged defaults')
     return {'packages': {name: installed[name] for name in sorted(required)},
-            'files': files, 'gnome_defaults_source': 'linux/desktops/gnome/defaults.ini'}
+            'files': files, 'desktop': desktop}
 
 
 def clock_epoch(rootfs):
@@ -323,7 +335,7 @@ def native_boot_request(rootfs, output):
         ('boot-request.example.json', 'usr/share/doc/piano-next-boot/boot-request.example.json', 0o644),
     ):
         source = ROOT / 'linux/userspace' / name
-        path = target(rootfs, destination)
+        path = userspace.guest_resolve(rootfs, destination)
         path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, path)
         path.chmod(mode)
@@ -536,6 +548,7 @@ def execute(record):
     require_host()
     out, rootfs, source, kernel = [Path(record[k]) for k in ('output', 'rootfs', 'source', 'kernel')]
     cfg = record['config']; public = Path(record['public_source']); m, kernel_hash = modules.inspect(kernel)
+    desktop = record.get('desktop', 'gnome')
     abi = runtime.kernel_identity(Path(record['kernel_build']), source, m['source_commit'], m['kernel_release'])
     helper_cc = ('clang' if platform.machine() in ('aarch64', 'arm64') or
                  not shutil.which('aarch64-linux-gnu-gcc') else 'aarch64-linux-gnu-gcc')
@@ -557,20 +570,22 @@ def execute(record):
         with log.open('a') as stream: subprocess.run(list(map(str, args)), cwd=cwd, stdout=stream, stderr=subprocess.STDOUT, check=True)
     try:
         if not record.get('resume'):
-            run(['unshare', '--mount', '--propagation', 'private', 'bash', public / 'scripts/build-rootfs.sh',
+            from prepare_debian_desktop import prepare
+            recipe = prepare(public, out.with_name(out.name + '-recipe'), desktop)
+            run(['unshare', '--mount', '--propagation', 'private', 'bash', recipe / 'scripts/build-rootfs.sh',
                  '--suite', cfg['debian']['suite'], '--output', out, '--mesa-dir', record['mesa_dir']])
-        if not (out / 'COMPLETE').is_file() or rootfs.stat().st_uid: raise ValueError('Public GNOME build did not complete with native guest ownership')
+        if not (out / 'COMPLETE').is_file() or rootfs.stat().st_uid: raise ValueError('Base desktop build did not complete with native guest ownership')
         put(rootfs, 'usr/sbin/policy-rc.d', '#!/bin/sh\nexit 101\n'); (rootfs / 'usr/sbin/policy-rc.d').chmod(0o755)
         gsd_folder = ROOT / 'build/gsd/runtime'
-        if not (gsd_folder.parent / 'SOURCE.json').is_file():
+        if desktop == 'gnome' and not (gsd_folder.parent / 'SOURCE.json').is_file():
             run([sys.executable, ROOT / 'tools/build_gsd_packages.py', '--output',
                  gsd_folder.parent, '--sysroot', rootfs])
-        gsd = gsd_packages(gsd_folder)
+        gsd = gsd_packages(gsd_folder) if desktop == 'gnome' else {'packages': {}}
         mutter_folder = ROOT / 'build/mutter/runtime'
-        if not (mutter_folder.parent / 'SOURCE.json').is_file():
+        if desktop == 'gnome' and not (mutter_folder.parent / 'SOURCE.json').is_file():
             run([sys.executable, ROOT / 'tools/build_mutter_packages.py', '--output',
                  mutter_folder.parent, '--sysroot', rootfs])
-        mutter = mutter_packages(mutter_folder)
+        mutter = mutter_packages(mutter_folder) if desktop == 'gnome' else {'packages': {}}
         gsd_stage = target(rootfs, 'tmp/piano-gnome-packages')
         gsd_stage.mkdir(parents=True, exist_ok=True)
         for row in gsd['packages'].values():
@@ -621,10 +636,14 @@ def execute(record):
         if record.get('resume'):
             staged_modules = target(rootfs, 'usr/lib/modules') / m['kernel_release']
             if staged_modules.is_dir(): shutil.rmtree(staged_modules)
-        userspace.stage(rootfs, public); hardware.build(out / 'adapters', public, rootfs)
+        userspace.stage(rootfs, public, desktop=desktop); hardware.build(out / 'adapters', public, rootfs)
+        if desktop == 'kde':
+            from prepare_debian_desktop import configure
+            configure(rootfs, subprocess.run)
         # Compile the staged local GNOME defaults after the public builder's
         # dconf update, so animation/power policy is actually present in root.
-        run(['chroot', rootfs, 'dconf', 'update'])
+        if desktop == 'gnome':
+            run(['chroot', rootfs, 'dconf', 'update'])
         previous_release = record.get('previous_kernel_release')
         remove_releases = ([previous_release] if previous_release and previous_release != m['kernel_release']
                            and (rootfs / 'usr/lib/modules' / previous_release).is_dir() else [])
@@ -652,7 +671,7 @@ def execute(record):
         packages = capture(['chroot', rootfs, 'dpkg-query', '-W', '-f=${binary:Package}\t${Version}\t${Architecture}\t${db:Status-Status}\n'])
         (out / 'packages.tsv').write_text(packages + '\n')
         installed = {p[0].split(':')[0]: p[1] for line in packages.splitlines() if len(p := line.split('\t')) == 4 and p[3] == 'installed'}
-        defaults = default_system_record(rootfs, installed, cfg)
+        defaults = default_system_record(rootfs, installed, cfg, desktop)
         for package, row in sensors['packages'].items():
             if installed.get(package) != row['version']:
                 raise ValueError('Installed Piano sensors version differs: ' + package)
@@ -675,7 +694,7 @@ def execute(record):
         boot = bootstrap(rootfs, kernel, out, m['kernel_release'], record.get('boot_task_snapshot', False))
         clock = clock_epoch(rootfs)
         if modules.inspect(kernel)[1] != kernel_hash: raise ValueError('Kernel changed during rootfs build')
-        result = {'status': 'HOST_BUILT_RELEASE_GNOME_ROOT_NOT_BOOT_VERIFIED', 'rootfs': str(rootfs),
+        result = {'status': 'HOST_BUILT_RELEASE_' + desktop.upper() + '_ROOT_NOT_BOOT_VERIFIED', 'rootfs': str(rootfs),
                   'root_policy': 'LABEL=PIANOROOT', 'kernel_release': m['kernel_release'], 'kernel_commit': m['source_commit'],
                   'kernel_manifest_sha256': kernel_hash, 'release_config_sha256': digest(POLICY), 'packages_sha256': digest(out / 'packages.tsv'),
                   'adapters_manifest_sha256': digest(out / 'adapters/manifest.json'), 'runtime_manifest_sha256': digest(bundle / 'manifest.json'),
@@ -684,14 +703,14 @@ def execute(record):
                   'mutter': mutter,
                   'boot_request': boot_request, 'firmware_commit': cfg['firmware']['commit'],
                   'clock_epoch': clock,
-                  'default_system': defaults,
+                  'default_system': defaults, 'desktop': desktop,
                   'initramfs': boot, 'password': cfg['login']['password'], 'autologin_retained': True,
                   'bit_reproducible': False, 'root_uid': rootfs.stat().st_uid, 'device_operation_performed': False}
         (out / 'manifest.json').write_text(json.dumps(result, indent=2) + '\n')
         (out / 'FAILED.json').unlink(missing_ok=True)
         return result
     except Exception as exc:
-        if out.is_dir(): (out / 'FAILED.json').write_text(json.dumps({'status': 'BUILD_FAILED', 'error': str(exc)}) + '\n')
+        if out.is_dir(): (out / 'FAILED.json').write_text(json.dumps({'status': 'BUILD_FAILED', 'desktop': desktop, 'error': str(exc)}) + '\n')
         raise
 
 
@@ -701,6 +720,7 @@ def main():
     for name in ('mesa-dir', 'sensors-dir', 'ffmpeg-dir', 'runtime-dir', 'kernel-build', 'public-source', 'firmware-source', 'macros', 'v4l2-source'): parser.add_argument('--' + name, type=Path)
     mode = parser.add_mutually_exclusive_group(required=True); mode.add_argument('--plan', action='store_true'); mode.add_argument('--execute', action='store_true')
     parser.add_argument('--resume', action='store_true', help='Reuse the completed upstream base and refresh release assembly')
+    parser.add_argument('--desktop', choices=('gnome', 'kde'), default='gnome')
     parser.add_argument('--boot-task-snapshot', action='store_true',
                         help='Enable one delayed PID1/blocked-task snapshot in the diagnostic initramfs')
     args = vars(parser.parse_args()); execute_flag = args.pop('execute'); args.pop('plan')

@@ -157,8 +157,8 @@ def build(output, source, rootfs=None):
     # Keep the pinned service intact; order the real Debian display manager
     # behind completed native backlight/DPU/DSI readiness, including cold boots.
     files['etc/systemd/system/piano-display.service.d/20-native-kms-order.conf'] = (
-        '[Unit]\nBefore=display-manager.service gdm3.service gdm.service\n').encode()
-    files['etc/systemd/system/gdm3.service.d/20-piano-display.conf'] = (
+        '[Unit]\nBefore=display-manager.service gdm3.service gdm.service sddm.service\n').encode()
+    files['etc/systemd/system/display-manager.service.d/20-piano-display.conf'] = (
         '[Unit]\nRequires=piano-display.service\nAfter=piano-display.service\n').encode()
     inputs = {}
     for name in PINS:

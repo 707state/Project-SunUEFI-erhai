@@ -26,7 +26,11 @@ struct piano_pen_owner {
     uint64_t retry_at, max_age, last_frame, last_pressure;
     int hid_fd, input_fd, tool_present, contact_present, have_frame, release_pending;
     int squeeze_down, squeeze_reported;
+    int squeeze_clicks, squeeze_long;
+    uint64_t squeeze_started;
 };
+
+#define SQUEEZE_HOLD_NS UINT64_C(600000000)
 
 static uint64_t owner_boot_ns(void)
 {
@@ -66,6 +70,8 @@ static void release_tool(struct piano_pen_owner *p)
     p->tool_present = 0;
     p->contact_present = 0;
     p->squeeze_reported = 0;
+    p->squeeze_started = 0;
+    p->squeeze_long = 0;
     p->release_pending = 0;
 }
 
@@ -76,6 +82,8 @@ static void reset_owner(struct piano_pen_owner *p)
     p->have_frame = 0;
     p->last_pressure = 0;
     p->squeeze_down = 0;
+    p->squeeze_started = 0;
+    p->squeeze_long = 0;
 }
 
 static int matching_hid(const char *path)
@@ -101,6 +109,8 @@ struct piano_pen_owner *piano_pen_owner_create(const char *ini,
     if (!p)
         return NULL;
     p->hid_fd = p->input_fd = -1;
+    const char *squeeze = getenv("PIANO_PEN_SQUEEZE_ACTION");
+    p->squeeze_clicks = !squeeze || strcmp(squeeze, "stylus");
     p->max_age = age;
     p->core = piano_pen_core_create(ini, 3, PIANO_PEN_PORTRAIT,
                                     age, error, sizeof(error));
@@ -180,7 +190,44 @@ int piano_pen_owner_poll_fd(struct piano_pen_owner *p)
 
 static void report_squeeze(struct piano_pen_owner *p, int down)
 {
+    if (down == p->squeeze_down)
+        return;
     p->squeeze_down = down;
+    if (p->squeeze_clicks) {
+        if (down) {
+            /* A squeeze must act at a current pen location, never at the
+             * unrelated seat mouse position. Outside proximity it does not
+             * produce a desktop click.
+             */
+            p->squeeze_started = p->tool_present ? owner_boot_ns() : 0;
+            p->squeeze_long = 0;
+        } else if (p->squeeze_started && p->tool_present) {
+            if (p->squeeze_long) {
+                struct input_event events[] = {
+                    { .type = EV_KEY, .code = BTN_STYLUS, .value = 0 },
+                    { .type = EV_SYN, .code = SYN_REPORT }
+                };
+                if (input_events(p, events, 2))
+                    p->stats.input_errors++;
+                p->squeeze_reported = 0;
+            } else if (!p->contact_present) {
+                /* Primary activation on the same tablet tool. Retain its
+                 * real position and pressure; do not interrupt a held tip.
+                 */
+                struct input_event events[] = {
+                    { .type = EV_KEY, .code = BTN_TOUCH, .value = 1 },
+                    { .type = EV_SYN, .code = SYN_REPORT },
+                    { .type = EV_KEY, .code = BTN_TOUCH, .value = 0 },
+                    { .type = EV_SYN, .code = SYN_REPORT }
+                };
+                if (input_events(p, events, 4))
+                    p->stats.input_errors++;
+            }
+            p->squeeze_started = 0;
+            p->squeeze_long = 0;
+        }
+        return;
+    }
     /* Tool buttons belong to the actual tablet tool. No global keyboard
      * shortcut is emitted while the pen is outside the display's range.
      */
@@ -251,6 +298,24 @@ void piano_pen_owner_tick(struct piano_pen_owner *p)
     uint64_t now = owner_boot_ns();
     if (!now)
         return;
+    if (p->squeeze_clicks && p->squeeze_down && p->squeeze_started &&
+        !p->squeeze_long && now >= p->squeeze_started &&
+        now - p->squeeze_started >= SQUEEZE_HOLD_NS) {
+        /* Mark it consumed even on disconnect; release must not turn a
+         * failed secondary click into an unexpected primary click.
+         */
+        p->squeeze_long = 1;
+        if (p->tool_present) {
+            struct input_event events[] = {
+                { .type = EV_KEY, .code = BTN_STYLUS, .value = 1 },
+                { .type = EV_SYN, .code = SYN_REPORT }
+            };
+            if (input_events(p, events, 2))
+                p->stats.input_errors++;
+            else
+                p->squeeze_reported = 1;
+        }
+    }
     if (p->tool_present && p->have_frame && now >= p->last_frame &&
         now - p->last_frame > p->max_age) {
         release_tool(p);
@@ -446,7 +511,8 @@ int piano_pen_owner_input_report(struct piano_pen_owner *p,
 #define ADD(t, c, v) events[n++] = (struct input_event){ .type = (t), .code = (c), .value = (v) }
     ADD(EV_KEY, BTN_TOUCH, contact);
     ADD(EV_KEY, BTN_TOOL_PEN, proximity);
-    ADD(EV_KEY, BTN_STYLUS, proximity && p->squeeze_down);
+    ADD(EV_KEY, BTN_STYLUS, proximity && p->squeeze_down &&
+        (!p->squeeze_clicks || p->squeeze_long));
     if (proximity) {
         ADD(EV_ABS, ABS_X, x);
         ADD(EV_ABS, ABS_Y, y);
@@ -463,7 +529,8 @@ int piano_pen_owner_input_report(struct piano_pen_owner *p,
     if (!ret) {
         p->tool_present = proximity;
         p->contact_present = contact;
-        p->squeeze_reported = proximity && p->squeeze_down;
+        p->squeeze_reported = proximity && p->squeeze_down &&
+            (!p->squeeze_clicks || p->squeeze_long);
     }
     return ret;
 }

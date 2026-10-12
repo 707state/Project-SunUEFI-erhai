@@ -1,0 +1,29 @@
+pkgname=fastrpc
+pkgver=1.0.7
+pkgrel=1
+pkgdesc='Qualcomm FastRPC userspace and DSP services'
+arch=(aarch64)
+url='https://github.com/quic/fastrpc'
+license=(BSD-3-Clause)
+depends=(glibc libyaml libbsd systemd-libs)
+makedepends=(base-devel autoconf automake libtool pkgconf)
+options=(!debug !lto)
+_commit=228d98b5f143ed917789cde017a8aa548e65b80b
+source=("fastrpc-$pkgver.tar.gz::https://codeload.github.com/quic/fastrpc/tar.gz/$_commit")
+sha256sums=('46f68c2e0cb0d5cb461e17024fb60f87a5b73ad28fd60e5450a62d7c104d96ac')
+
+build() {
+  cd "fastrpc-$_commit"
+  autoreconf -fi
+  ./configure --prefix=/usr --libdir=/usr/lib --sbindir=/usr/bin \
+    --with-systemdsystemunitdir=/usr/lib/systemd/system \
+    --with-udevrulesdir=/usr/lib/udev/rules.d \
+    --with-sysusersdir=/usr/lib/sysusers.d
+  make -j6
+}
+
+package() {
+  cd "fastrpc-$_commit"
+  make DESTDIR="$pkgdir" install
+  install -Dm644 LICENSE.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

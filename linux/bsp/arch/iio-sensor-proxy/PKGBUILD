@@ -1,0 +1,29 @@
+pkgname=iio-sensor-proxy
+pkgver=3.9
+pkgrel=1.1
+pkgdesc='SensorProxy with Qualcomm SSC and Piano claim ordering support'
+arch=(aarch64)
+url='https://gitlab.freedesktop.org/hadess/iio-sensor-proxy'
+license=(GPL-3.0-or-later)
+depends=(glib2 systemd-libs polkit libgudev libssc)
+makedepends=(base-devel meson systemd)
+options=(!debug !lto)
+source=('iio-sensor-proxy_3.9.orig.tar.bz2' 'ssc-claim-race.patch')
+sha256sums=('19a4ae99b1b8af603fc789841025f9747bf445418d69ec7389e75adb6c8186bf'
+            '83617558bff9ac568caa1d02538c83ce071bfbebfa78f44fbc59f54a1e83b9c4')
+
+prepare() {
+  cd "iio-sensor-proxy-$pkgver"
+  patch --fuzz=0 -Np1 < ../ssc-claim-race.patch
+}
+
+build() {
+  arch-meson "iio-sensor-proxy-$pkgver" build \
+    -Dssc-support=enabled -Dtests=false -Dgtk-tests=false -Dgtk_doc=false \
+    -Dsystemdsystemunitdir=/usr/lib/systemd/system -Dudevrulesdir=/usr/lib/udev/rules.d
+  meson compile -C build -j6
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir" --no-rebuild
+}
