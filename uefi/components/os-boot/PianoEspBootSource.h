@@ -18,6 +18,17 @@ typedef struct {
 EFI_STATUS PianoEspBootLoad(PIANO_ESP_BOOT_SOURCE *,CONST PIANO_CPU_INPUT_ENV *);
 // Check the actual boot file without loading its contents or changing media.
 EFI_STATUS PianoEspBootPresent(VOID);
+typedef struct {
+ EFI_STATUS Locate,Open;
+ UINT32 Filesystems,Matches,Candidates;
+ struct {
+   UINT32 Stage,BlockSize,Revision,Type;
+   UINT64 LastBlock,FirstLba,LastLba;
+   UINT8 Lun,Pun;
+   CHAR16 Name[36];
+ } Candidate[16];
+} PIANO_ESP_DISCOVERY;
+CONST PIANO_ESP_DISCOVERY *PianoEspBootDiscovery(VOID);
 BOOLEAN PianoEspBootOwned(CONST PIANO_ESP_BOOT_SOURCE *,VOID *Owner);
 EFI_STATUS PianoEspBootRelease(PIANO_ESP_BOOT_SOURCE *);
 BOOLEAN PianoEspBootReleased(CONST PIANO_ESP_BOOT_SOURCE *);

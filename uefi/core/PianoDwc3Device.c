@@ -940,11 +940,14 @@ VOID PianoDwc3ServiceReplayStartup(VOID) {
   if(mService.ResetDiagnostic.Replayed && Now>=mService.ResetDiagnostic.ReplayTime &&
      Now-mService.ResetDiagnostic.ReplayTime<5000000)return;
   mService.ResetDiagnostic.Replayed=TRUE;mService.ResetDiagnostic.ReplayTime=Now;
-  DEBUG((DEBUG_WARN,"SUNUEFI_USB_STARTUP_SAVED reset=%r waited_us=%lu id=%08x revision=%08x type=%08x gctl=%08x initial_dctl=%08x initial_dsts=%08x initial_gusb2=%08x initial_pipe=%08x final_dctl=%08x final_dsts=%08x final_gusb2=%08x final_pipe=%08x\n",
+  DEBUG((DEBUG_WARN,"SUNUEFI_USB_STARTUP_SAVED reset=%r waited_us=%lu id=%08x revision=%08x type=%08x gctl=%08x initial_dctl=%08x initial_dsts=%08x final_dctl=%08x final_dsts=%08x\n",
     mService.ResetDiagnostic.Status,(UINT64)mService.ResetDiagnostic.Waited,mService.ResetDiagnostic.Id,
     mService.ResetDiagnostic.Revision,mService.ResetDiagnostic.Type,mService.ResetDiagnostic.Gctl,
-    mService.ResetDiagnostic.Dctl,mService.ResetDiagnostic.Dsts,mService.ResetDiagnostic.Gusb2,mService.ResetDiagnostic.Pipe,
-    mService.ResetDiagnostic.FinalDctl,mService.ResetDiagnostic.FinalDsts,mService.ResetDiagnostic.FinalGusb2,mService.ResetDiagnostic.FinalPipe));
+    mService.ResetDiagnostic.Dctl,mService.ResetDiagnostic.Dsts,
+    mService.ResetDiagnostic.FinalDctl,mService.ResetDiagnostic.FinalDsts));
+  DEBUG((DEBUG_WARN,"SUNUEFI_USB_PHY_SAVED initial_gusb2=%08x initial_pipe=%08x final_gusb2=%08x final_pipe=%08x\n",
+    mService.ResetDiagnostic.Gusb2,mService.ResetDiagnostic.Pipe,
+    mService.ResetDiagnostic.FinalGusb2,mService.ResetDiagnostic.FinalPipe));
   DEBUG((DEBUG_WARN,"SUNUEFI_USB_STARTUP_SAVED start=%r cleanup=%r phase=%u started=%u configured=%u allocated=%u freed=%u retained=%u uncertain=%u reset_only=%u\n",
     mService.StartStatus,mService.CleanupStatus,(UINT32)mService.State.Phase,mService.State.Started,mService.State.Configured,
     mService.DmaBuffersAllocated,mService.State.DmaBuffersFreed,mService.State.Retained,mService.Uncertain,mService.ResetOnlyRetired));

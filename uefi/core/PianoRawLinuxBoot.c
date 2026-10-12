@@ -36,13 +36,16 @@ STATIC BOOLEAN mStableAttempted,mStableReplayed;
 STATIC EFI_STATUS mStableStatus;
 STATIC CONST CHAR8 *mStableStage;
 STATIC UINT64 mStableReplayCounter;
+VOID PianoReportLinuxBootOption(VOID);
 VOID PianoRawLinuxReplayStable(VOID) {
- if(!mStableAttempted||!Live())return;
+ if(!Live())return;
  UINT64 First,Last,Now=GetPerformanceCounter();
  GetPerformanceCounterProperties(&First,&Last);
  UINT64 Delta=First>Last?mStableReplayCounter-Now:Now-mStableReplayCounter;
  if(mStableReplayed&&GetTimeInNanoSecond(Delta)<5000000000ULL)return;
  mStableReplayed=TRUE;mStableReplayCounter=Now;
+ PianoReportLinuxBootOption();
+ if(!mStableAttempted)return;
  DEBUG((DEBUG_WARN,"PIANO_LINUX_STABLE_SAVED stage=%a status=%r bytes=%lu captured=%u prepared=%u entered=%u retained=%u\n",
    mStableStage,mStableStatus,(UINT64)mRaw.AcceptedBytes,mRaw.Captured,mRaw.Prepared,mRaw.Entered,
    mRaw.File.Retained||mRaw.File.File.Retained));

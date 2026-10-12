@@ -435,6 +435,12 @@ def prepare(root=ROOT):
   HandleParsingLib|ShellPkg/Library/UefiHandleParsingLib/UefiHandleParsingLib.inf
   BcfgCommandLib|ShellPkg/Library/UefiShellBcfgCommandLib/UefiShellBcfgCommandLib.inf
 [Components]
+  # FAT filename collation falls back to the provided EnglishDxe service.
+  # Keep zh-CN as the platform/UI default; it must not prevent FAT mounting.
+  FatPkg/EnhancedFatDxe/Fat.inf {
+    <PcdsFixedAtBuild>
+      gEfiMdePkgTokenSpaceGuid.PcdUefiVariableDefaultPlatformLang|"en-US"
+  }
   MdeModulePkg/Logo/LogoDxe.inf
   pianoProductPkg/Applications/LinuxBoot/LinuxBoot.inf
   MdeModulePkg/Bus/Pci/XhciDxe/XhciDxe.inf

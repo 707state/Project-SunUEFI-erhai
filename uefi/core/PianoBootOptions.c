@@ -8,9 +8,21 @@
 #include <Library/BaseMemoryLib.h>
 #include <Library/DebugLib.h>
 #include "Components/os-boot/PianoEspBootSource.h"
+STATIC EFI_STATUS mFileStatus=EFI_NOT_STARTED,mOptionStatus=EFI_NOT_STARTED;
+VOID PianoReportLinuxBootOption(VOID) {
+  DEBUG((DEBUG_WARN,"PIANO_LINUX_BOOT_OPTION_SAVED file=%r register=%r variables=ram\n",mFileStatus,mOptionStatus));
+  CONST PIANO_ESP_DISCOVERY *D=PianoEspBootDiscovery();
+  DEBUG((DEBUG_WARN,"PIANO_ESP_DISCOVERY locate=%r sfs=%u matches=%u open=%r\n",D->Locate,D->Filesystems,D->Matches,D->Open));
+  for(UINTN I=0;I<D->Candidates&&I<ARRAY_SIZE(D->Candidate);++I)
+    DEBUG((DEBUG_WARN,"PIANO_ESP_CANDIDATE index=%u stage=%u name=%s revision=%x type=%u block=%u last=%lx first_lba=%lx last_lba=%lx pun=%u lun=%u\n",
+      (UINT32)I,D->Candidate[I].Stage,D->Candidate[I].Name,D->Candidate[I].Revision,D->Candidate[I].Type,
+      D->Candidate[I].BlockSize,D->Candidate[I].LastBlock,D->Candidate[I].FirstLba,D->Candidate[I].LastLba,
+      D->Candidate[I].Pun,D->Candidate[I].Lun));
+}
 
 EFI_STATUS PianoRegisterLinuxBootOption(VOID) {
   EFI_STATUS Status=PianoEspBootPresent();
+  mFileStatus=Status;
   DEBUG((DEBUG_WARN,"PIANO_LINUX_BOOT_OPTION stage=esp-file status=%r\n",Status));
   if(Status!=EFI_SUCCESS)return Status;
   EFI_GUID File={0x9ddefc13,0x4746,0x441b,{0x87,0xe9,0x4c,0xd3,0xe1,0x21,0xb0,0x84}};
@@ -39,6 +51,7 @@ EFI_STATUS PianoRegisterLinuxBootOption(VOID) {
     break;
   }
   FreePool(Volumes);
+  mOptionStatus=Status;
   DEBUG((DEBUG_WARN,"PIANO_LINUX_BOOT_OPTION stage=register status=%r variables=ram\n",Status));
   return Status;
 }
