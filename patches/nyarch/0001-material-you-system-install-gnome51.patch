@@ -1,0 +1,128 @@
+Subject: [PATCH] Material You: support system installation and GNOME 51 theme resources
+
+Use the installed extension path, standard GNOME 51 CSS templates, and
+local schema discovery for User Themes. Disconnect settings handlers on
+disable and create output directories before asynchronous CSS writes.
+
+--- a/extension.js
++++ b/extension.js
+@@ -74,16 +74,30 @@
+     constructor(uuid) {
+         super(uuid);
+         this._uuid = uuid;
+-        this.extensiondir = GLib.get_home_dir() + '/.local/share/gnome-shell/extensions/material-you-colors@francescocaracciolo.github.io'; 
++        this.extensiondir = this.path; 
++    }
++
++    connectSetting(settings, signal, callback) {
++        this._connections.push([settings, settings.connect(signal, callback)]);
++    }
++
++    shellSettings() {
++        const path = Main.extensionManager.lookup('user-theme@gnome-shell-extensions.gcampax.github.com')?.path ??
++            GLib.path_get_dirname(this.path) + '/user-theme@gnome-shell-extensions.gcampax.github.com';
++        if (!path)
++            throw new Error('User Themes is required for Material UwU');
++        const source = Gio.SettingsSchemaSource.new_from_directory(path + '/schemas', Gio.SettingsSchemaSource.get_default(), false);
++        return new Gio.Settings({settings_schema: source.lookup(SHELL_SCHEMA, true)});
+     }
+ 
+     enable() {
++        this._connections = [];
+         this.initTranslations();
+         this._interfaceSettings = this.getSettings(INTERFACE_SCHEMA);
+-        this._interfaceSettings.connect('changed::color-scheme', () => {
++        this.connectSetting(this._interfaceSettings, 'changed::color-scheme', () => {
+             this.apply_theme(base_presets, color_mappings, true);
+         });
+-        this._interfaceSettings.connect('changed::accent-color', () => {
++        this.connectSetting(this._interfaceSettings, 'changed::accent-color', () => {
+             const accent_color_lock = this._prefsSettings.get_boolean("accent-color-lock");
+             if (accent_color_lock) {
+               this._prefsSettings.set_boolean("accent-color-lock", false);
+@@ -92,14 +106,17 @@
+             this.apply_theme(base_presets, color_mappings, true, true);
+         });
+         this._wallpaperSettings = this.getSettings(WALLPAPER_SCHEMA);
+-        this._wallpaperSettings.connect('changed::picture-uri', () => {
++        this.connectSetting(this._wallpaperSettings, 'changed::picture-uri', () => {
++            this.apply_theme(base_presets, color_mappings, true);
++        });
++        this.connectSetting(this._wallpaperSettings, 'changed::picture-uri-dark', () => {
+             this.apply_theme(base_presets, color_mappings, true);
+         });
+         this._prefsSettings = this.getSettings(PREFS_SCHEMA);
+-        this._prefsSettings.connect('changed::scheme', () => {
++        this.connectSetting(this._prefsSettings, 'changed::scheme', () => {
+             this.apply_theme(base_presets, color_mappings, true);
+         });
+-        this._prefsSettings.connect('changed::accent-color', () => {
++        this.connectSetting(this._prefsSettings, 'changed::accent-color', () => {
+             const accent_color_lock = this._prefsSettings.get_boolean("accent-color-lock");
+             if (accent_color_lock) {
+               this._prefsSettings.set_boolean("accent-color-lock", false);
+@@ -108,12 +125,12 @@
+ 
+             this.apply_theme(base_presets, color_mappings, true);
+         });
+-        this._prefsSettings.connect('changed::enable-accent-colors', () => {
++        this.connectSetting(this._prefsSettings, 'changed::enable-accent-colors', () => {
+             this.apply_theme(base_presets, color_mappings, true);
+         });
+         try {
+-            this._shellSettings = this.getSettings(SHELL_SCHEMA);
+-            this._shellSettings.connect('changed::name', () => {
++            this._shellSettings = this.shellSettings();
++            this.connectSetting(this._shellSettings, 'changed::name', () => {
+                 // log("shell settings theme changed");
+                 // log(this._shellSettings.get_string("name"));
+                 if (this._shellSettings.get_string("name") === "reset") {
+@@ -140,6 +157,9 @@
+     }
+ 
+     disable() {
++        for (const [settings, id] of this._connections ?? [])
++            settings.disconnect(id);
++        this._connections = [];
+         // Don't remove theme on suspension
+         let lockingScreen = (Main.sessionMode.currentMode == "unlock-dialog"
+         || Main.sessionMode.currentMode == "lock-screen");
+@@ -160,7 +180,7 @@
+         let shell_settings = null;
+         let warn_shell_theme = false;
+         try {
+-            shell_settings = this.getSettings(SHELL_SCHEMA);
++            shell_settings = this.shellSettings();
+         } catch(e) {
+             log(e);
+             warn_shell_theme = true;
+@@ -262,13 +282,13 @@
+         // Run custom command
+         this.run_command(extra_command);
+         let config_path = GLib.get_home_dir() + "/.config";
+-        this.create_dir(config_path + "/gtk-4.0");
+-        this.create_dir(config_path + "/gtk-3.0");
++        this.create_dir_sync(config_path + "/gtk-4.0");
++        this.create_dir_sync(config_path + "/gtk-3.0");
+         this.write_str(css, config_path + "/gtk-4.0/gtk.css");
+         this.write_str("yes", config_path + "/gtk-4.0/.materialyou");
+         this.write_str(css, config_path + "/gtk-3.0/gtk.css");
+          
+-        if (ext_utils.check_npm(this.extensiondir)) {
++        if (parseInt(Config.PACKAGE_VERSION, 10) >= 47 || ext_utils.check_npm(this.extensiondir)) {
+             const version = Config.PACKAGE_VERSION.substring(0, 2);
+ 
+             this.create_dir_sync(GLib.get_home_dir() + "/.local/share/themes/MaterialYou"); 
+@@ -381,9 +401,10 @@
+         const file = Gio.File.new_for_path(path);
+         // Synchronous, blocking method
+         try {
+-            file.make_directory(null);
++            file.make_directory_with_parents(null);
+         } catch(e) {
+-            log(e);
++            if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.EXISTS))
++                throw e;
+         }
+     }
+     

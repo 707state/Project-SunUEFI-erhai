@@ -32,7 +32,7 @@ PACKAGES = (
     'gnome-maps', 'gnome-software', 'gnome-system-monitor', 'loupe', 'papers',
     'file-roller', 'mpv', 'fragments', 'lollypop', 'geary', 'kitty', 'flatpak',
     'flatseal', 'extension-manager', 'shortwave', 'komikku', 'fastfetch',
-    'nyancat', 'webapp-manager',
+    'nyancat', 'webapp-manager', 'pacman-contrib',
 )
 
 

@@ -1,0 +1,21 @@
+Subject: [PATCH] Follow MaterialYou's color scheme for automatic popup styling
+
+GNOME Shell's built-in style variant remains dark with a custom User Themes
+stylesheet. MaterialYou independently generates light CSS from the desktop
+preference, so using the built-in variant produces dark surfaces with dark
+text. Follow MaterialYou's input when its stylesheet is active; retain the
+upstream selection for other themes and explicit popup style overrides.
+
+--- a/components/popup/index.js
++++ b/components/popup/index.js
+@@ -504,6 +504,10 @@
+         if (lower_uri.includes('yaru'))
+             return lower_uri.includes('dark') ? 2 : 1;
+ 
++        if (lower_uri.includes('/materialyou/gnome-shell/'))
++            return this.interface_settings.get_string('color-scheme') ===
++                'prefer-dark' ? 2 : 1;
++
+         const shell_style = Main.getStyleVariant();
+         if (shell_style === 'light')
+             return 1;

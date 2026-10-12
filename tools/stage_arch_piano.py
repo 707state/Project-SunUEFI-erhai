@@ -100,7 +100,11 @@ def stage(args):
                'piano-cpufreq', 'piano-hostkeys', 'adsprpcd-sensorspd'])
         guest(['systemctl', 'set-default', 'graphical.target'])
         guest(['depmod', '-a', kernel['kernel_release']])
-    desktop = nyarch.stage(root, args.desktop_source)
+    from prepare_nyarch_material import prepare, UUID
+    extension_bundle = output / 'nyarch-shell-extensions'
+    shutil.copytree(args.extensions, extension_bundle)
+    prepare(args.desktop_source.resolve(), root, extension_bundle / UUID)
+    desktop = nyarch.stage(root, args.desktop_source, extension_bundle)
     clock = release.clock_epoch(root)
     release.native_boot_request(root, output)
     # Shared static bootstrap is built from a signed Debian busybox input,
@@ -145,6 +149,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('rootfs', 'kernel', 'runtime', 'sensor-source', 'desktop-source', 'bootstrap-sysroot'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--extensions', type=Path, default=ROOT / 'build/nyarch-extensions')
     parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     if not args.worker:

@@ -47,6 +47,12 @@ def stage(root, source, extensions=None):
         "'chromium.desktop', 'org.gnome.Console.desktop', 'moe.nyarchlinux.customize.desktop']\n")
     if extensions:
         enabled = []
+        defaults = {
+            'user-theme@gnome-shell-extensions.gcampax.github.com',
+            'material-you-colors@francescocaracciolo.github.io',
+            'blur-my-shell@aunetx', 'dash-to-dock@micxgx.gmail.com',
+            'gsconnect@andyholmes.github.io', 'arch-update@RaphaelRochet',
+        }
         for folder in sorted(extensions.iterdir()):
             if not folder.is_dir() or not (folder / 'metadata.json').is_file():
                 continue
@@ -55,7 +61,23 @@ def stage(root, source, extensions=None):
                 raise ValueError('Extension has no GNOME 51 support: ' + folder.name)
             shutil.copytree(folder, root / 'usr/share/gnome-shell/extensions' / folder.name,
                             symlinks=True, dirs_exist_ok=True)
-            enabled.append(metadata['uuid'])
+            if metadata['uuid'] == 'blur-my-shell@aunetx':
+                subprocess.run([
+                    'patch', '--batch', '--fuzz=0', '-p1', '-i',
+                    str(ROOT / 'patches/nyarch/0002-blur-follow-material-color-scheme.patch'),
+                ], cwd=root / 'usr/share/gnome-shell/extensions' / folder.name, check=True)
+            if metadata['uuid'] == 'gsconnect@andyholmes.github.io':
+                config = root / 'usr/share/gnome-shell/extensions' / folder.name / 'config.js'
+                text = config.read_text().replace('/usr/local/share/gnome-shell/extensions',
+                                                 '/usr/share/gnome-shell/extensions')
+                text = text.replace('/usr/local/share/glib-2.0/schemas',
+                                    '/usr/share/gnome-shell/extensions/' + folder.name + '/schemas')
+                text = text.replace('/usr/local/share/locale',
+                                    '/usr/share/gnome-shell/extensions/' + folder.name + '/locale')
+                text = text.replace('/usr/local/lib/x86_64-linux-gnu', '/usr/lib')
+                config.write_text(text)
+            if metadata['uuid'] in defaults:
+                enabled.append(metadata['uuid'])
         if 'blur-my-shell@aunetx' not in enabled:
             raise ValueError('Nyarch desktop requires Blur my Shell')
         with dconf.open('a') as stream:
@@ -63,9 +85,16 @@ def stage(root, source, extensions=None):
                          '\ndisable-user-extensions=false\n'
                          '\n[org/gnome/shell/extensions/user-theme]\nname=\'MaterialYou\'\n'
                          '\n[org/gnome/shell/extensions/blur-my-shell/panel]\nforce-light-text=true\n'
+                         '\n[org/gnome/shell/extensions/blur-my-shell/popup]\nstatic-blur=true\n'
+                         '\n[org/gnome/shell/extensions/blur-my-shell/overview]\nstyle-components=0\n'
                          '\n[org/gnome/shell/extensions/dash-to-dock]\n'
                          'dock-position=\'BOTTOM\'\ndash-max-icon-size=48\n'
                          'height-fraction=0.9\n')
+            if 'material-you-colors@francescocaracciolo.github.io' in enabled:
+                stream.write(
+                    '\n[org/gnome/shell/extensions/material-you-colors]\n'
+                    'python-backend=false\nenable-pywal-theming=false\n'
+                    'arcmenu-theming=false\nshow-notifications=false\n')
     # Keep ID=arch so pacman-based desktop tools choose the right backend.
     release = root / 'usr/lib/os-release'
     text = release.read_text()
@@ -79,10 +108,16 @@ def stage(root, source, extensions=None):
     (root / 'etc/hostname').write_text('piano\n')
     (root / 'etc/gdm/custom.conf').write_text(
         '[daemon]\nAutomaticLoginEnable=true\nAutomaticLogin=piano\n')
+    shutil.copytree(root / 'usr/share/themes/MaterialYou',
+                    root / 'home/piano/.local/share/themes/MaterialYou',
+                    symlinks=True, dirs_exist_ok=True)
     with guest_environment(root) as guest:
+        guest(['chown', '-R', 'piano:piano', '/home/piano/.local/share/themes'])
         guest(['locale-gen'])
         guest(['dconf', 'update'])
         guest(['glib-compile-schemas', '/usr/share/glib-2.0/schemas'])
+        for folder in (root / 'usr/share/gnome-shell/extensions').glob('*/schemas'):
+            guest(['glib-compile-schemas', '/' + str(folder.relative_to(root))])
         guest(['gtk-update-icon-cache', '-f', '-t', '/usr/share/icons/Tela-circle-MaterialYou'])
     record = {'source_url': 'https://github.com/NyarchLinux/NyarchLinux',
               'source_commit': commit, 'source_files': inputs,
