@@ -34,7 +34,7 @@ DRAFT_PREFIXES = ('patches/linux/7.2.9/drafts/', 'linux/dts/drafts/')
 
 def select(files, manual=None):
     if manual:
-        if manual not in ('uefi', 'linux', 'debian-gnome'):
+        if manual not in ('uefi', 'linux', 'debian-gnome', 'debian-kde'):
             raise ValueError('Unknown manual product target')
         return [manual]
     uefi = False
