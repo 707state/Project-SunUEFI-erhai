@@ -27,6 +27,18 @@ STATIC VOID TestKeys(VOID) {
   assert(FeedKey(&C,1,4)==EFI_SUCCESS); K=Get(&C); assert(K.Key.UnicodeChar==1 && (K.KeyState.KeyShiftState&EFI_LEFT_CONTROL_PRESSED));
   EmptyKeys(&C); assert(FeedKey(&C,0,0x52)==EFI_SUCCESS); assert(Get(&C).Key.ScanCode==SCAN_UP);
   EmptyKeys(&C); assert(FeedKey(&C,0,0x44)==EFI_SUCCESS); assert(Get(&C).Key.ScanCode==SCAN_F11);
+  for (UINT8 I=0;I<12;I++) {
+    UINT8 Usage=I<10?(UINT8)(0x1e + I):(UINT8)(0x2d + I - 10);
+    EmptyKeys(&C); assert(FeedKey(&C,0x10,Usage)==EFI_SUCCESS); K=Get(&C);
+    assert(K.Key.ScanCode==SCAN_F1+I&&!K.Key.UnicodeChar);
+    assert(!(K.KeyState.KeyShiftState&EFI_RIGHT_CONTROL_PRESSED));
+    assert(FeedKey(&C,0,Usage)==EFI_SUCCESS); assert(PianoPogoReadKeyEx(&C,&K)==EFI_NOT_READY);
+  }
+  EmptyKeys(&C); assert(FeedKey(&C,0x13,0x1e)==EFI_SUCCESS); K=Get(&C);
+  assert(K.Key.ScanCode==SCAN_F1&&(K.KeyState.KeyShiftState&EFI_LEFT_CONTROL_PRESSED));
+  assert(K.KeyState.KeyShiftState&EFI_LEFT_SHIFT_PRESSED);
+  EmptyKeys(&C); assert(FeedKey(&C,0x01,0x1e)==EFI_SUCCESS); K=Get(&C);
+  assert(K.Key.UnicodeChar=='1'&&!K.Key.ScanCode);
   EmptyKeys(&C); assert(FeedKey(&C,0,0x65)==EFI_SUCCESS); PianoPogoGetKeyState(&C,&S); assert(S.KeyShiftState&EFI_MENU_KEY_PRESSED);
   EmptyKeys(&C); assert(FeedKey(&C,0,0x53)==EFI_SUCCESS); EmptyKeys(&C);
   assert(FeedKey(&C,0,0x59)==EFI_SUCCESS); assert(Get(&C).Key.UnicodeChar=='1'); EmptyKeys(&C);

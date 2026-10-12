@@ -96,7 +96,7 @@ STATIC BOOLEAN Keyboard(PIANO_POGO_INPUT *Input, CONST UINT8 *P) {
   Input->Modifiers=P[1];
   for(I=0;I<6;I++) { OldKeys[I]=Input->PreviousKeys[I]; Input->PreviousKeys[I]=P[I+3]; if(OldKeys[I]!=P[I+3]) { Changed=TRUE; } }
   for (I=3;I<9;I++) {
-    UINT8 Usage=P[I]; EFI_KEY_DATA Key={0}; BOOLEAN Duplicate=FALSE,Shift;
+    UINT8 Usage=P[I],FunctionUsage=0; EFI_KEY_DATA Key={0}; BOOLEAN Duplicate=FALSE,Shift;
     if (!Usage || KeyPresent(OldKeys,Usage)) { continue; }
     for (J=3;J<I;J++) { if (P[J]==Usage) { Duplicate=TRUE; } }
     if (Duplicate) { continue; }
@@ -104,9 +104,17 @@ STATIC BOOLEAN Keyboard(PIANO_POGO_INPUT *Input, CONST UINT8 *P) {
     if (Usage==0x39) { Input->Toggle^=EFI_CAPS_LOCK_ACTIVE; continue; }
     if (Usage==0x53) { Input->Toggle^=EFI_NUM_LOCK_ACTIVE; continue; }
     if (Usage==0x47) { Input->Toggle^=EFI_SCROLL_LOCK_ACTIVE; continue; }
+    // The cover has no function row. Right Ctrl acts as Fn for 1..0,-,=;
+    // keep Left Ctrl and Shift available for normal Ctrl/Shift+Fn chords.
+    if (Input->Modifiers&0x10) {
+      if (Usage>=0x1e&&Usage<=0x27) { FunctionUsage=(UINT8)(0x3a+Usage-0x1e); }
+      else if (Usage==0x2d) { FunctionUsage=0x44; }
+      else if (Usage==0x2e) { FunctionUsage=0x45; }
+    }
     Shift=(Input->Modifiers&0x22)!=0;
-    Key.Key=TranslateKey(Usage,Shift,(Input->Toggle&EFI_CAPS_LOCK_ACTIVE)!=0,(Input->Toggle&EFI_NUM_LOCK_ACTIVE)!=0);
+    Key.Key=TranslateKey(FunctionUsage?FunctionUsage:Usage,Shift,(Input->Toggle&EFI_CAPS_LOCK_ACTIVE)!=0,(Input->Toggle&EFI_NUM_LOCK_ACTIVE)!=0);
     PianoPogoGetKeyState(Input,&Key.KeyState);
+    if (FunctionUsage) { Key.KeyState.KeyShiftState&=~EFI_RIGHT_CONTROL_PRESSED; }
     if (Shift && Key.Key.UnicodeChar>=0x20) { Key.KeyState.KeyShiftState&=~(EFI_LEFT_SHIFT_PRESSED|EFI_RIGHT_SHIFT_PRESSED); }
     if ((Input->Modifiers&0x11) && Key.Key.UnicodeChar>='a' && Key.Key.UnicodeChar<='z') { Key.Key.UnicodeChar-=('a'-1); }
     if ((Input->Modifiers&0x11) && Key.Key.UnicodeChar>='A' && Key.Key.UnicodeChar<='Z') { Key.Key.UnicodeChar-=('A'-1); }

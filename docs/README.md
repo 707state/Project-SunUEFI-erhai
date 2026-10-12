@@ -11,6 +11,7 @@
 * [UEFI Fastboot](user/fastboot.md)
 * [已知问题](user/known-issues.md)
 * [HMCL 图形加速](user/hmcl.md)
+* [官方键盘与 F1–F12](user/keyboard.md)
 
 ## 开发
 
