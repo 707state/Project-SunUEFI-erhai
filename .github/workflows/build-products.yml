@@ -107,6 +107,7 @@ jobs:
                   ./build.sh linux
                   ./build.sh mesa
                   ./build.sh sensors
+                  ./build.sh ffmpeg --install-dependencies
                   ./build.sh release-rootfs
                   ./build.sh package --root-size-mib 8192
                   ./build.sh installer --bundle artifacts/release-7.2.9
@@ -121,7 +122,7 @@ jobs:
           if [ -f build/logs/ci-build.log ]; then
             tail -n 160 build/logs/ci-build.log
           fi
-          for log in build/distros/release-7.2.9.build.log build/gsd/build.log build/mutter/build.log; do
+          for log in build/distros/release-7.2.9.build.log build/ffmpeg/build.log build/gsd/build.log build/mutter/build.log; do
             if [ -f "$log" ]; then
               echo "::group::$log"
               tail -n 100 "$log"
@@ -199,6 +200,9 @@ jobs:
             build/sensors/SOURCE
             build/sensors/SHA256SUMS
             build/sensors/runtime/
+            build/ffmpeg/SOURCE.json
+            build/ffmpeg/SHA256SUMS
+            build/ffmpeg/build.log
             build/distros/release-7.2.9/manifest.json
             build/distros/release-7.2.9.build.log
             build/distros/release-7.2.9/FAILED.json

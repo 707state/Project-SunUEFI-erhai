@@ -50,6 +50,7 @@ docker run --rm -v "$PWD:/workspace" -w /workspace sunuefi-builder bash -euc '
 ./build.sh linux
 ./build.sh mesa
 ./build.sh sensors
+./build.sh ffmpeg --install-dependencies
 ./build.sh release-rootfs
 ./build.sh package --root-size-mib 8192
 ./build.sh installer --bundle artifacts/release-7.2.9

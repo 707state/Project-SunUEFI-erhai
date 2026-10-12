@@ -28,6 +28,47 @@ def run(args, **kwargs):
     subprocess.run(list(map(str, args)), check=True, **kwargs)
 
 
+def build_isolated(output, sysroot, jobs):
+    """Build ARM64 Debian packages in a disposable copy, never in the tablet."""
+    import build_gsd_packages as debian
+    output, sysroot = output.resolve(), sysroot.resolve()
+    if os.geteuid() or not sysroot.is_relative_to(ROOT / 'build') or not sysroot.is_dir():
+        raise ValueError('--sysroot requires root and an existing project build sysroot')
+    if not output.is_relative_to(ROOT / 'build') or output.exists():
+        raise ValueError('Use a new project build output directory')
+    builder = output.with_name(output.name + '-builder')
+    if builder.exists() or builder.is_relative_to(sysroot):
+        raise ValueError('Use a fresh isolated builder outside the input sysroot')
+    builder.mkdir()
+    guest_root = builder / 'rootfs'
+    run(['cp', '-a', '--reflink=auto', sysroot, guest_root])
+    resolver = guest_root / 'etc/resolv.conf'
+    resolver.unlink(missing_ok=True)
+    resolver.write_bytes(Path('/etc/resolv.conf').read_bytes())
+    workspace = guest_root / 'workspace'
+    workspace.mkdir(exist_ok=True)
+    # The CLI enters a private mount namespace before taking this branch.
+    with debian.devices(guest_root):
+        # Runtime roots contain the local +piano Mesa version; dev packages
+        # require exact official versions. Align only this disposable clone.
+        import build_mutter_packages
+        with (builder / 'dependencies.log').open('w') as log:
+            build_mutter_packages.chroot(guest_root, ['apt-get', 'update'],
+                                        stdout=log, stderr=subprocess.STDOUT)
+            build_mutter_packages.align_development_cohorts(guest_root, log)
+        run(['mount', '--bind', ROOT, workspace])
+        try:
+            run(['chroot', guest_root, '/usr/bin/env',
+                 'DEBIAN_FRONTEND=noninteractive',
+                 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', '/usr/bin/python3',
+                 '/workspace/tools/build_ffmpeg_packages.py',
+                 '--output', '/workspace/' + str(output.relative_to(ROOT)),
+                 '--jobs', str(jobs), '--install-dependencies'])
+        finally:
+            run(['umount', workspace])
+    return json.loads((output / 'SOURCE.json').read_text())
+
+
 def build(output, jobs, install_dependencies=False):
     if platform.machine() not in ('aarch64', 'arm64'):
         raise ValueError('Run in a Debian trixie ARM64 builder; no host or reduced-feature package is substituted')
@@ -76,7 +117,7 @@ def build(output, jobs, install_dependencies=False):
     changelog.write_text('ffmpeg (' + version + ') trixie; urgency=medium\n\n'
                          '  * Follow the stateful V4L2 decoder source-change sequence.\n\n'
                          ' -- Project SunUEFI <sunuefi@users.noreply.github.com>  ' +
-                         formatdate(usegmt=True) + '\n\n' + changelog.read_text())
+                         formatdate(localtime=False) + '\n\n' + changelog.read_text())
     env = os.environ.copy()
     # Keep the original Debian codec/features recipe, including its extra variant.
     # Only the extensive upstream test suite is omitted for this candidate build.
@@ -127,10 +168,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=ROOT / 'build/ffmpeg')
     parser.add_argument('--jobs', type=int, default=2)
+    parser.add_argument('--sysroot', type=Path,
+                        help='Clone a completed Debian ARM64 sysroot into an isolated package builder')
+    parser.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--install-dependencies', action='store_true',
                         help='Install signed APT build dependencies inside the Debian builder')
     args = parser.parse_args()
     try:
-        print(json.dumps(build(args.output, args.jobs, args.install_dependencies), indent=2))
+        if args.sysroot and not args.worker:
+            import sys
+            raise SystemExit(subprocess.run(['unshare', '--mount', '--propagation', 'private',
+                                            sys.executable, __file__, *sys.argv[1:], '--worker']).returncode)
+        result = (build_isolated(args.output, args.sysroot, args.jobs) if args.sysroot else
+                  build(args.output, args.jobs, args.install_dependencies))
+        print(json.dumps(result, indent=2))
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         parser.exit(2, str(error) + '\n')

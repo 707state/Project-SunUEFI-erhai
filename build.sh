@@ -91,7 +91,7 @@ PY_RELEASE_SOURCE
     python3 tools/build_release_rootfs.py --kernel artifacts/kernels/release-7.2.9 \
       --source "$sunuefi_release_source" --kernel-build build/kernels/release-7.2.9 \
       --output build/distros/release-7.2.9 --mesa-dir build/mesa/runtime \
-      --sensors-dir build/sensors/runtime --execute "$@" ;;
+      --sensors-dir build/sensors/runtime --ffmpeg-dir build/ffmpeg/runtime --execute "$@" ;;
   package|esp)
     python3 tools/package_release.py --uefi artifacts/product/PianoUEFI-product.img \
       --kernel artifacts/kernels/release-7.2.9 --dtb vendor/piano-linux/board.dtb \
@@ -111,6 +111,7 @@ PY_RELEASE_SOURCE
     "$0" linux
     "$0" mesa
     "$0" sensors
+    "$0" ffmpeg --install-dependencies
     "$0" release-rootfs
     "$0" package "$@"
     ;;
