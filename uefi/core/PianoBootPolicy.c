@@ -6,6 +6,7 @@
 #include "PianoProductBootLog.h"
 #endif
 #include "PianoUsbStorageExperiment.h"
+#include "PianoRawLinuxBoot.h"
 #include <Protocol/SimpleTextInEx.h>
 #include <Protocol/HiiDatabase.h>
 #include <Protocol/HiiString.h>
@@ -214,6 +215,8 @@ STATIC EFI_STATUS EFIAPI Pump(PIANO_PRODUCT_RUNTIME_PROTOCOL *This,UINT32 Reason
 #endif
   mReport.KeyStatus=RefreshKeys();RequireAlive();
   if(mReport.Retained){mReport.Pumping=FALSE;return EFI_COMPROMISED_DATA;}
+  PianoDwc3ServiceReplayStartup();
+  PianoRawLinuxReplayStable();
   if(mStartupUsbProof){
     S=StartupUsbAbsent();
     if(S==EFI_SUCCESS){

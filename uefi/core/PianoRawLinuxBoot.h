@@ -15,6 +15,7 @@ EFI_STATUS PianoRawLinuxRegister(EFI_HANDLE Image,EFI_SYSTEM_TABLE *SystemTable)
 EFI_STATUS PianoRawLinuxLoadStable(PIANO_PRODUCT_RUNTIME_PROTOCOL *,VOID **Context,VOID **Token);
 EFI_STATUS PianoRawLinuxDiscardStable(VOID);
 BOOLEAN PianoRawLinuxStableRetained(VOID);
+VOID PianoRawLinuxReplayStable(VOID);
 EFI_STATUS PianoRawLinuxPrepare(PIANO_PRODUCT_OWNERS *,EFI_HANDLE,CONST PIANO_RAW_LINUX_REPORT **);
 // CPU-only identity/ownership check, including the actual complete owner ledger.
 BOOLEAN PianoRawLinuxPrepared(CONST PIANO_RAW_LINUX_REPORT *,CONST PIANO_PRODUCT_OWNERS *,EFI_HANDLE);

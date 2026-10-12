@@ -50,6 +50,8 @@ typedef struct {
   UINT32 DmaBuffersAllocated,DmaBuffersFreed;
 } PIANO_USB_STARTUP_FAILURE_EVIDENCE;
 EFI_STATUS PianoDwc3GetStartupFailureEvidence(PIANO_USB_STARTUP_FAILURE_EVIDENCE *Evidence);
+// Throttled APP replay of saved startup registers; no fresh device access.
+VOID PianoDwc3ServiceReplayStartup(VOID);
 // APP-only start/worker/stop. Start requires the actual owned USB context.
 EFI_STATUS PianoDwc3ServiceStart(PIANO_OWNED_SMMU *Context,PIANO_DMA_DEVICE *Device,
   CONST PIANO_DWC3_SERVICE_CONFIG *Config);

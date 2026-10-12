@@ -815,6 +815,15 @@ STATIC struct {
   UINT32 DmaBuffersAllocated;
   PIANO_PRODUCT_RUNTIME_PROTOCOL *UiRuntime;
   PIANO_PRODUCT_RUNTIME_PROTOCOL UiMethods;
+  struct {
+    BOOLEAN Valid;
+    UINT32 Id,Revision,Type,Gctl,Dctl,Dsts,Gusb2,Pipe;
+    UINT32 FinalDctl,FinalDsts,FinalGusb2,FinalPipe;
+    UINTN Waited;
+    EFI_STATUS Status;
+    UINT64 ReplayTime;
+    BOOLEAN Replayed;
+  } ResetDiagnostic;
 } mService;
 STATIC PIANO_DMA_BUFFER *CONST mServiceBuffers[]={&mRing,&mTrbs[0],&mTrbs[1],&mSetup,&mTx,&mTrbs[2],&mTrbs[3],&mBulkRx,&mBulkTx};
 STATIC BOOLEAN ServiceBuffersEmpty(VOID) {
@@ -893,6 +902,11 @@ STATIC EFI_STATUS ServiceReset(BOOLEAN *CsftrstTimeout) {
   UINTN Step=(Dwc31||Dwc32)?20000:10,Limit=(Dwc31||Dwc32)?200000:100000;
   UINTN Sync=Dwc31&&(!Known31||Revision<=0x3138302a)?50000:0,Waited=0;
   *CsftrstTimeout=FALSE;
+  mService.ResetDiagnostic.Valid=TRUE;
+  mService.ResetDiagnostic.Id=Id;mService.ResetDiagnostic.Revision=Revision;mService.ResetDiagnostic.Type=Type;
+  mService.ResetDiagnostic.Gctl=Dr(0xC110);mService.ResetDiagnostic.Dctl=Dr(0xC704);
+  mService.ResetDiagnostic.Dsts=Dr(0xC70C);mService.ResetDiagnostic.Gusb2=Dr(0xC200);
+  mService.ResetDiagnostic.Pipe=Dr(0xC2C0);mService.ResetDiagnostic.Status=EFI_NOT_READY;
   DEBUG((DEBUG_WARN,"SUNUEFI_USB_SERVICE_RESET phase=begin gsnpsid=%08x ver_number=%08x ver_type=%08x limit_us=%lu sync_us=%lu dctl=%08x gusb2=%08x pipe=%08x\n",
     Id,Revision,Type,(UINT64)Limit,(UINT64)Sync,Dr(0xC704),Dr(0xC200),Dr(0xC2C0)));
   Dw(0xC704,(Dr(0xC704)&~(BIT31|(0xfU<<5)))|BIT30);
@@ -901,6 +915,9 @@ STATIC EFI_STATUS ServiceReset(BOOLEAN *CsftrstTimeout) {
     if(!(Dr(0xC704)&BIT30))break;
     if(Waited==Limit) {
       *CsftrstTimeout=TRUE;
+      mService.ResetDiagnostic.Waited=Waited;mService.ResetDiagnostic.Status=EFI_TIMEOUT;
+      mService.ResetDiagnostic.FinalDctl=Dr(0xC704);mService.ResetDiagnostic.FinalDsts=Dr(0xC70C);
+      mService.ResetDiagnostic.FinalGusb2=Dr(0xC200);mService.ResetDiagnostic.FinalPipe=Dr(0xC2C0);
       DEBUG((DEBUG_WARN,"SUNUEFI_USB_SERVICE_RESET phase=timeout waited_us=%lu dctl=%08x dsts=%08x gusb2=%08x pipe=%08x\n",
         (UINT64)Waited,Dr(0xC704),Dr(0xC70C),Dr(0xC200),Dr(0xC2C0)));
       return EFI_TIMEOUT;
@@ -910,9 +927,27 @@ STATIC EFI_STATUS ServiceReset(BOOLEAN *CsftrstTimeout) {
   }
   if(Sync){EFI_STATUS S=gBS->Stall(Sync);if(S!=EFI_SUCCESS)return EFI_ERROR(S)?S:EFI_DEVICE_ERROR;}
   if(mService.State.ServicesLost)return EFI_ABORTED;
+  mService.ResetDiagnostic.Waited=Waited;mService.ResetDiagnostic.Status=EFI_SUCCESS;
+  mService.ResetDiagnostic.FinalDctl=Dr(0xC704);mService.ResetDiagnostic.FinalDsts=Dr(0xC70C);
+  mService.ResetDiagnostic.FinalGusb2=Dr(0xC200);mService.ResetDiagnostic.FinalPipe=Dr(0xC2C0);
   DEBUG((DEBUG_WARN,"SUNUEFI_USB_SERVICE_RESET phase=done waited_us=%lu sync_us=%lu dctl=%08x dsts=%08x gusb2=%08x pipe=%08x\n",
     (UINT64)Waited,(UINT64)Sync,Dr(0xC704),Dr(0xC70C),Dr(0xC200),Dr(0xC2C0)));
   return EFI_SUCCESS;
+}
+VOID PianoDwc3ServiceReplayStartup(VOID) {
+  if(!mService.ResetDiagnostic.Valid || mService.State.ServicesLost || !mService.Config.NowUs)return;
+  UINT64 Now=mService.Config.NowUs(mService.Config.Context);
+  if(mService.ResetDiagnostic.Replayed && Now>=mService.ResetDiagnostic.ReplayTime &&
+     Now-mService.ResetDiagnostic.ReplayTime<5000000)return;
+  mService.ResetDiagnostic.Replayed=TRUE;mService.ResetDiagnostic.ReplayTime=Now;
+  DEBUG((DEBUG_WARN,"SUNUEFI_USB_STARTUP_SAVED reset=%r waited_us=%lu id=%08x revision=%08x type=%08x gctl=%08x initial_dctl=%08x initial_dsts=%08x initial_gusb2=%08x initial_pipe=%08x final_dctl=%08x final_dsts=%08x final_gusb2=%08x final_pipe=%08x\n",
+    mService.ResetDiagnostic.Status,(UINT64)mService.ResetDiagnostic.Waited,mService.ResetDiagnostic.Id,
+    mService.ResetDiagnostic.Revision,mService.ResetDiagnostic.Type,mService.ResetDiagnostic.Gctl,
+    mService.ResetDiagnostic.Dctl,mService.ResetDiagnostic.Dsts,mService.ResetDiagnostic.Gusb2,mService.ResetDiagnostic.Pipe,
+    mService.ResetDiagnostic.FinalDctl,mService.ResetDiagnostic.FinalDsts,mService.ResetDiagnostic.FinalGusb2,mService.ResetDiagnostic.FinalPipe));
+  DEBUG((DEBUG_WARN,"SUNUEFI_USB_STARTUP_SAVED start=%r cleanup=%r phase=%u started=%u configured=%u allocated=%u freed=%u retained=%u uncertain=%u reset_only=%u\n",
+    mService.StartStatus,mService.CleanupStatus,(UINT32)mService.State.Phase,mService.State.Started,mService.State.Configured,
+    mService.DmaBuffersAllocated,mService.State.DmaBuffersFreed,mService.State.Retained,mService.Uncertain,mService.ResetOnlyRetired));
 }
 EFI_STATUS PianoDwc3ServiceStart(PIANO_OWNED_SMMU *Context,PIANO_DMA_DEVICE *Device,CONST PIANO_DWC3_SERVICE_CONFIG *Config) {
   if(Context==NULL || Device==NULL || Config==NULL || Config->NowUs==NULL)return EFI_INVALID_PARAMETER;
@@ -1141,6 +1176,7 @@ EFI_STATUS PianoDwc3ServiceFenceExit(VOID) {
   return Halted?EFI_SUCCESS:EFI_TIMEOUT;
 }
 #else
+VOID PianoDwc3ServiceReplayStartup(VOID){}
 EFI_STATUS PianoDwc3ServiceStart(PIANO_OWNED_SMMU *C,PIANO_DMA_DEVICE *D,CONST PIANO_DWC3_SERVICE_CONFIG *Config){(VOID)C;(VOID)D;(VOID)Config;return EFI_UNSUPPORTED;}
 EFI_STATUS PianoDwc3ServicePollBounded(UINTN N){(VOID)N;return EFI_UNSUPPORTED;}
 EFI_STATUS PianoDwc3ServicePumpApp(UINT32 Reason,UINTN BudgetUs){(VOID)Reason;(VOID)BudgetUs;return EFI_UNSUPPORTED;}

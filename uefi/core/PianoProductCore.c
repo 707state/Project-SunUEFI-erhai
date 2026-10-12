@@ -49,6 +49,7 @@ STATIC UINT64 mBootLogStart;
 STATIC CONST CHAR8 *mBootLogStage="PAYLOAD";
 STATIC VOID BootLogReturned(VOID);
 STATIC VOID FailStop(EFI_STATUS Status);
+EFI_STATUS PianoRegisterLinuxBootOption(VOID);
 STATIC BOOLEAN EFIAPI BootLogAlive(VOID) {
   return !mBootLogExited && !mOwners.Report.ServicesLost && gST!=NULL && gST->BootServices==gBS;
 }
@@ -317,6 +318,7 @@ EFI_STATUS EFIAPI PianoProductCoreEntry(EFI_HANDLE Image,EFI_SYSTEM_TABLE *Syste
   ObserveDisplay("after-usb");
   BootLogStage("MENU",EFI_NOT_STARTED);
   Status=PianoBootPolicyInitialize(Image);if(Status!=EFI_SUCCESS)FailStop(Status);
+  (VOID)PianoRegisterLinuxBootOption();
   // Fdt was validated against the BootShim handoff and mapped input at PAYLOAD.
   INT32 Chosen=FdtPathOffset(Fdt,"/chosen"),BootArgsBytes=0;
   CONST CHAR8 *BootArgs=Chosen<0?NULL:FdtGetProp(Fdt,Chosen,"bootargs",&BootArgsBytes);
@@ -352,6 +354,7 @@ EFI_STATUS EFIAPI PianoProductCoreEntry(EFI_HANDLE Image,EFI_SYSTEM_TABLE *Syste
   if(mStartupTarget==1)(VOID)PianoProductDisplayCheckpoint("BEFORE SIMPLEINIT",4);
   for(;;) {
     Status=PianoBootPolicyRun();
+    PianoDwc3ServiceReplayStartup();
     if(Status==EFI_END_OF_FILE) {
       // An acknowledged host action can arrive while a UI return is pending.
       // Observe its real service ledger before using an older UI reason.

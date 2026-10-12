@@ -225,7 +225,7 @@ def main():
   MemoryTypeInformationChangeLib|MdeModulePkg/Library/MemoryTypeInformationChangeLibNull/MemoryTypeInformationChangeLibNull.inf
 [PcdsFixedAtBuild]
   gSimpleInitTokenSpaceGuid.PcdLoggerdUseConsole|FALSE
-  gSimpleInitTokenSpaceGuid.PcdGuiDefaultRotate|90
+  gSimpleInitTokenSpaceGuid.PcdGuiDefaultRotate|0
   gSimpleInitTokenSpaceGuid.PcdGuiDefaultDPI|600
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x80000046
 [BuildOptions]

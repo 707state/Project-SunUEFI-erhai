@@ -104,6 +104,23 @@ EFI_STATUS PianoEspBootLoad(PIANO_ESP_BOOT_SOURCE *S,CONST PIANO_CPU_INPUT_ENV *
  if(E!=EFI_SUCCESS){EFI_STATUS R=PianoBootFileDispose(&S->File);S->Retained=R!=EFI_SUCCESS;return R==EFI_SUCCESS?E:R;}
  S->Loaded=TRUE;return EFI_SUCCESS;
 }
+EFI_STATUS PianoEspBootPresent(VOID) {
+ EFI_HANDLE *Handles=NULL;UINTN Count=0,Matches=0;ESP_IDENTITY Selected={0};
+ EFI_STATUS E=gBS->LocateHandleBuffer(ByProtocol,&gEfiSimpleFileSystemProtocolGuid,NULL,&Count,&Handles);
+ if(E!=EFI_SUCCESS)return E;
+ if(!Handles||!Count||Count>256){if(Handles)gBS->FreePool(Handles);return EFI_COMPROMISED_DATA;}
+ for(UINTN I=0;I<Count;++I){ESP_IDENTITY Id;if(Volume(Handles[I],&Id)){Selected=Id;++Matches;}}
+ E=gBS->FreePool(Handles);if(E!=EFI_SUCCESS)return E;
+ if(Matches!=1)return Matches?EFI_COMPROMISED_DATA:EFI_NOT_FOUND;
+ EFI_FILE_PROTOCOL *Root=NULL,*File=NULL;
+ E=Selected.Sfs->OpenVolume(Selected.Sfs,&Root);
+ if(E!=EFI_SUCCESS)return E;
+ if(!Root)return EFI_COMPROMISED_DATA;
+ E=Root->Open(Root,&File,L"\\EFI\\Piano\\stable\\boot.img",EFI_FILE_MODE_READ,0);
+ if(E==EFI_SUCCESS&&!File)E=EFI_COMPROMISED_DATA;
+ if(File){EFI_STATUS Close=File->Close(File);if(Close!=EFI_SUCCESS)E=Close;}
+ EFI_STATUS Close=Root->Close(Root);return Close!=EFI_SUCCESS?Close:E;
+}
 BOOLEAN PianoEspBootOwned(CONST PIANO_ESP_BOOT_SOURCE *S,VOID *Owner){
  return S&&S->Loaded&&!S->Released&&!S->Retained&&Owner&&Owner==S->Owner&&S->File.Owner==Owner&&
  S->File.Ready&&S->File.Taken&&!S->File.Consumed&&!S->File.Retained&&!S->File.ServicesLost&&

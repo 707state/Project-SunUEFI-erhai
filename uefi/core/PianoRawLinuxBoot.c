@@ -12,6 +12,7 @@
 #include <Library/MemoryAllocationLib.h>
 #include <Library/CacheMaintenanceLib.h>
 #include <Library/DebugLib.h>
+#include <Library/TimerLib.h>
 
 #define RAW_KERNEL 0xA8000000ULL
 #define RAW_DTB 0xB0000000ULL
@@ -30,6 +31,22 @@ typedef struct {
   CONST PIANO_PRODUCT_OWNERS *Owners;PIANO_PRODUCT_OWNERS_REPORT Clean;PIANO_PRODUCT_OWNERS_CONFIG Config;
 } RAW_STATE;
 STATIC RAW_STATE mRaw;
+STATIC BOOLEAN Live(VOID);
+STATIC BOOLEAN mStableAttempted,mStableReplayed;
+STATIC EFI_STATUS mStableStatus;
+STATIC CONST CHAR8 *mStableStage;
+STATIC UINT64 mStableReplayCounter;
+VOID PianoRawLinuxReplayStable(VOID) {
+ if(!mStableAttempted||!Live())return;
+ UINT64 First,Last,Now=GetPerformanceCounter();
+ GetPerformanceCounterProperties(&First,&Last);
+ UINT64 Delta=First>Last?mStableReplayCounter-Now:Now-mStableReplayCounter;
+ if(mStableReplayed&&GetTimeInNanoSecond(Delta)<5000000000ULL)return;
+ mStableReplayed=TRUE;mStableReplayCounter=Now;
+ DEBUG((DEBUG_WARN,"PIANO_LINUX_STABLE_SAVED stage=%a status=%r bytes=%lu captured=%u prepared=%u entered=%u retained=%u\n",
+   mStableStage,mStableStatus,(UINT64)mRaw.AcceptedBytes,mRaw.Captured,mRaw.Prepared,mRaw.Entered,
+   mRaw.File.Retained||mRaw.File.File.Retained));
+}
 STATIC BOOLEAN Overlap(UINT64 A,UINT64 N,UINT64 B,UINT64 M){return A>MAX_UINT64-N||B>MAX_UINT64-M||(A<B+M&&B<A+N);}
 STATIC BOOLEAN Live(VOID){return mRaw.SystemTable&&mRaw.SystemTable->BootServices==gBS;}
 STATIC BOOLEAN SameImage(VOID){CONST EFI_LOADED_IMAGE_PROTOCOL *L=mRaw.Identity;return L&&
@@ -118,6 +135,7 @@ STATIC EFI_STATUS FileSlice(VOID *C,UINTN Us){
  return E==EFI_NOT_READY?EFI_SUCCESS:E;
 }
 EFI_STATUS PianoRawLinuxLoadStable(PIANO_PRODUCT_RUNTIME_PROTOCOL *Runtime,VOID **Context,VOID **Token){
+ mStableAttempted=TRUE;mStableReplayed=FALSE;mStableStage="ready";mStableStatus=EFI_NOT_READY;
  if(!Context||!Token||Context==Token)return EFI_INVALID_PARAMETER;*Context=NULL;*Token=NULL;
  if(Ready(&mRaw)!=EFI_SUCCESS||!Runtime||Runtime->Revision!=PIANO_PRODUCT_RUNTIME_REVISION||
  !Runtime->Pump||!Runtime->BootServicesAlive||!Runtime->BootServicesAlive(Runtime))return EFI_NOT_READY;
@@ -128,14 +146,17 @@ EFI_STATUS PianoRawLinuxLoadStable(PIANO_PRODUCT_RUNTIME_PROTOCOL *Runtime,VOID 
  mRaw.FileQuiet=FALSE;
  mRaw.Runtime=Runtime;mRaw.FileLoading=TRUE;
  PIANO_CPU_INPUT_ENV Cpu={.Context=&mRaw,.BootServicesAlive=FileAlive,.ServiceSlice=FileSlice};
+ mStableStage="esp-file";
  EFI_STATUS E=PianoEspBootLoad(&mRaw.File,&Cpu);
- if(E==EFI_SUCCESS)E=Parse(&mRaw.File.Reader,&mRaw.Parsed);
+ if(E==EFI_SUCCESS){mStableStage="image-parse";E=Parse(&mRaw.File.Reader,&mRaw.Parsed);}
+ mStableStatus=E;
  if(E!=EFI_SUCCESS){
    if(mRaw.File.Loaded){mRaw.FileQuiet=TRUE;EFI_STATUS R=PianoEspBootRelease(&mRaw.File);mRaw.FileQuiet=FALSE;if(R!=EFI_SUCCESS)E=R;}
    mRaw.FileLoading=FALSE;return E;
  }
  mRaw.Blob=mRaw.File.Blob;mRaw.Token=mRaw.File.Owner;CopyMem(mRaw.AcceptedSha,mRaw.File.File.Sha256,32);
  mRaw.AcceptedBytes=mRaw.File.File.Bytes;mRaw.FileMode=TRUE;mRaw.Captured=TRUE;mRaw.FileLoading=FALSE;
+ mStableStage="loaded";mStableStatus=EFI_SUCCESS;
  *Context=&mRaw;*Token=mRaw.Token;return EFI_SUCCESS;
 }
 BOOLEAN PianoRawLinuxStableRetained(VOID){return mRaw.File.Retained||mRaw.File.File.Retained||mRaw.File.File.ServicesLost;}
