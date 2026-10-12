@@ -47,7 +47,14 @@
 
 首次分区尚未完成实机验证，相关限制见[已知问题](docs/user/known-issues.md#首次分区)。详细操作见[安装指南](docs/user/install-from-artifact.md)；[电脑安装](docs/user/install-from-computer.md)与[临时启动](docs/user/temporary-boot.md)作为备用方式保留。Magisk 用户打开助手的方法见[模块说明](docs/devel/android-module.md)。
 
-Linux 默认用户名为 `piano`，密码为 `piano123456`，桌面自动登录。当前 Linux 内核和系统服务启动约 39 秒，不含开机选择页与 UEFI；首次启动可能更久。
+| Linux 默认登录 | 内容 |
+| --- | --- |
+| 用户名 | `piano` |
+| 密码 | `piano123456` |
+
+桌面默认自动登录，锁屏解锁和 `sudo` 使用上述密码，可在系统设置中修改。当前 Linux 内核和系统服务启动约 39 秒，不含开机选择页与 UEFI；首次启动可能更久。
+
+仅临时运行 UEFI 时，另下载 **`SunUEFI-UEFI-Fastboot-提交号`**，解压后执行 `fastboot boot PianoUEFI-product.img`。这是不含原厂 Android 内核的独立镜像，与助手里的 UEFI 使用同一核心；不会安装 Linux 或改写 BOOT。操作说明见[临时启动固件](docs/user/temporary-boot.md)。
 
 HyperOS 更新后，在助手的 **维护** 页点击 **重新安装引导**。想回 Android，可以在开机选择页按音量＋选择 Android、短按电源确认；Linux 下也可运行 `piano-next-boot android --reboot`。遇到无法启动的情况，见[故障恢复](docs/user/recovery.md)。
 
