@@ -79,6 +79,8 @@ def stage(args):
     put(root, 'usr/share/gnome-settings-daemon/ambient-profiles/piano.ini',
         (ROOT / 'linux/desktops/gnome/ambient-policy/piano.ini').read_text())
     put(root, 'etc/piano/linux-debug.conf', 'usb=acm-ncm\nshell=1\nrecovery_seconds=0\n')
+    put(root, 'etc/chromium-flags.conf',
+        (ROOT / 'linux/bsp/arch/chromium-flags.conf').read_text())
     with guest_environment(root) as guest:
         guest(['pacman', '-S', '--needed', '--noconfirm', 'erofs-utils', 'device-mapper', 'rsync'])
         # The upstream demo account occupies UID 1000 in bootstrap tarballs.

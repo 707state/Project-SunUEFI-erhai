@@ -28,6 +28,11 @@ PACKAGES = (
     'v4l-utils', 'python-pillow', 'python-numpy', 'zram-generator',
     'gnome-console', 'gnome-text-editor', 'gnome-tweaks', 'gnome-keyring', 'snapshot',
     'vulkan-freedreno', 'mesa-utils', 'vulkan-tools', 'polkit', 'busybox',
+    'gnome-calculator', 'gnome-calendar', 'gnome-clocks', 'gnome-weather',
+    'gnome-maps', 'gnome-software', 'gnome-system-monitor', 'loupe', 'papers',
+    'file-roller', 'mpv', 'fragments', 'lollypop', 'geary', 'kitty', 'flatpak',
+    'flatseal', 'extension-manager', 'shortwave', 'komikku', 'fastfetch',
+    'nyancat', 'webapp-manager',
 )
 
 
