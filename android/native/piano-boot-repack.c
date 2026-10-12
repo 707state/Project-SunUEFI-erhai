@@ -558,8 +558,12 @@ static void identity_fields(FILE *f, const struct snapshot *s) {
   fprintf(f, ",\"boot_bytes\":%zu,\"device_rdev\":%ju", s->bytes.size, (uintmax_t)s->st.st_rdev);
 }
 static void check_identity(const struct json *j, const struct snapshot *s) {
-  require(json_number(j, 0, "schema_version") == 1 && json_number(j, 0, "boot_bytes") == s->bytes.size &&
-          json_number(j, 0, "device_rdev") == (uintmax_t)s->st.st_rdev, "BOOT metadata/device identity differs");
+  /* UFS minor numbers can change across boots. The by-name path, slot,
+   * fingerprints and owned wrapper hashes identify a saved installation.
+   * Keep st_rdev checks in the live snapshot/write guards for this operation. */
+  require(json_number(j, 0, "schema_version") == 1 &&
+          json_number(j, 0, "boot_bytes") == s->bytes.size,
+          "BOOT metadata/device identity differs");
   string_matches(j, 0, "active_slot", s->id.slot); string_matches(j, 0, "boot_device", s->id.node);
   string_matches(j, 0, "rom_fingerprint", s->id.rom); string_matches(j, 0, "boot_fingerprint", s->id.bootprop);
   string_matches(j, 0, "footer_fingerprint", s->boot.avb.fingerprint);
