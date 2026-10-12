@@ -121,6 +121,13 @@ jobs:
           if [ -f build/logs/ci-build.log ]; then
             tail -n 160 build/logs/ci-build.log
           fi
+          for log in build/distros/release-7.2.9.build.log build/gsd/build.log build/mutter/build.log; do
+            if [ -f "$log" ]; then
+              echo "::group::$log"
+              tail -n 100 "$log"
+              echo "::endgroup::"
+            fi
+          done
       - name: ESP image and one-click installer
         if: matrix.target != 'linux'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -175,7 +182,10 @@ jobs:
             build/sensors/SHA256SUMS
             build/sensors/runtime/
             build/distros/release-7.2.9/manifest.json
+            build/distros/release-7.2.9.build.log
+            build/distros/release-7.2.9/FAILED.json
             build/gsd/SOURCE.json
+            build/gsd/build.log
             build/gsd/runtime/
             build/mutter/SOURCE.json
             build/mutter/runtime/

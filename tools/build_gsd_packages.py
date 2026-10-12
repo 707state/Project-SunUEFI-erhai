@@ -295,9 +295,8 @@ def build(output, sysroot, jobs, source_cache=None, prepared_source=None,
             chroot(rootfs, ['python3', inside(rootfs, mirror / PREPARE.relative_to(ROOT)),
                            'debian', inside(rootfs, source), '--source', inside(rootfs, pristine)],
                    stdout=log, stderr=subprocess.STDOUT)
-        # dpkg-buildpackage legitimately un-applies quilt patches after building.
-        # Restore the standard prepared view before recording source fingerprints;
-        # this does not compile or alter the completed .deb files.
+        # Existing jobs, including collect-only retries, may have their quilt
+        # patches unapplied. Start from the standard prepared source view.
         chroot(rootfs, ['sh', '-c', 'cd ' + shlex.quote(inside(rootfs, source)) +
                        ' && dpkg-source --before-build .'], stdout=log, stderr=subprocess.STDOUT)
         proof = validate_prepared(source)
@@ -310,6 +309,11 @@ def build(output, sysroot, jobs, source_cache=None, prepared_source=None,
             env = ['env', 'DEB_BUILD_OPTIONS=nocheck parallel=' + str(jobs), 'DEB_BUILD_PROFILES=nocheck',
                    'sh', '-c', 'cd ' + shlex.quote(inside(rootfs, source)) + ' && dpkg-buildpackage -b -us -uc']
             chroot(rootfs, env, stdout=log, stderr=subprocess.STDOUT)
+            # dpkg-buildpackage runs --after-build and removes quilt's added
+            # source files. Restore the patched view before collect validates
+            # source provenance; the completed binary packages stay unchanged.
+            chroot(rootfs, ['sh', '-c', 'cd ' + shlex.quote(inside(rootfs, source)) +
+                           ' && dpkg-source --before-build .'], stdout=log, stderr=subprocess.STDOUT)
         return collect(output, rootfs, source, origin, jobs)
 
 
