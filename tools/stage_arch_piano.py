@@ -105,6 +105,18 @@ def stage(args):
     boot = release.bootstrap(args.bootstrap_sysroot.resolve(), args.kernel.resolve(),
                              output, kernel['kernel_release'])
     release.sanitize(root, output)
+    # These rolling packages moved their dist-info license directory without
+    # updating the /usr/share/licenses symlink. Preserve the actual licenses.
+    for package, pattern, filename in (
+            ('python-jaraco.collections', 'jaraco_collections-*.dist-info/licenses/LICENSE', 'LICENSE'),
+            ('python-numpy', 'numpy-*.dist-info/licenses/LICENSE.txt', 'LICENSE.txt')):
+        link = root / 'usr/share/licenses' / package / filename
+        if link.is_symlink() and not userspace.guest_resolve(root, str(link.relative_to(root))).exists():
+            matches = list((root / 'usr/lib').glob('python*/site-packages/' + pattern))
+            if len(matches) != 1:
+                raise ValueError('Cannot locate installed license: ' + package)
+            link.unlink()
+            link.symlink_to(os.path.relpath(matches[0], link.parent))
     for name in ('var/cache/pacman/pkg', 'var/tmp', 'tmp'):
         folder = root / name
         for item in folder.iterdir():
