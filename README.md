@@ -56,6 +56,8 @@
 4. **刷写镜像**：在 **存储** 页分别选择下载好的 `esp.img` 和 `root.ext4.img`，点击 **安装所选镜像**，等待完成。
 5. **进入 Linux**：在 **启动** 页选择 **UEFI → Linux**，点击 **保存并重启**。
 
+首次启动会自动把 root 文件系统扩展到已创建的独立分区容量，无需手动扩容；不会占用额外的 Android 空间。
+
 首次分区尚未完成实机验证，相关限制见[已知问题](docs/user/known-issues.md#首次分区)。详细操作见[安装指南](docs/user/install-from-artifact.md)；[电脑安装](docs/user/install-from-computer.md)与[临时启动](docs/user/temporary-boot.md)作为备用方式保留。Magisk 用户打开助手的方法见[模块说明](docs/devel/android-module.md)。
 
 | 登录平板的 Linux 系统 | 默认账号密码 |
