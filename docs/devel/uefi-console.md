@@ -63,7 +63,8 @@ FAT 驱动返回 Unsupported，不发布 SimpleFileSystem。
 
 产品 DSC 只为 `Fat.inf` 设置 `PcdUefiVariableDefaultPlatformLang="en-US"`，
 提供文件名比较服务的回退语言；中文界面与全局 `PlatformLang` 保持不变。
-该修正已完成正式产品编译，后续实机确认挂载和 Linux 启动。
+该修正已完成正式产品编译，并从菜单成功启动 Linux，GNOME 正常运行。
+标准 BIOS 启动列表的实际显示仍需单独确认。
 
 ## USB 复位对照
 

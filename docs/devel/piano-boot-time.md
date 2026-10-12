@@ -1,5 +1,12 @@
 # Piano Linux 启动时间
 
+2026-10-12，修正中文默认语言影响 FAT 挂载的问题后，从 UEFI 菜单选择
+Linux 成功进入 GNOME。运行内核 `7.2.9-piano-gnome-gd33a42990baf`，
+`systemd-analyze time` 显示 **1.917 秒 kernel + 37.140 秒 userspace = 39.057 秒**，
+`graphical.target` 在用户空间开始后的 37.137 秒达到，GDM 服务正常运行。
+该数字不含开机选择器与 UEFI，也不是全新 root 首次启动的结果。
+这次没有对各项历史优化分别做耗时对照，不能把全部提速归因于 FAT 修正。
+
 2026-10-09 全新 Debian / GNOME root 的首次启动，内核
 `7.2.9-piano-gnome-g60fd202096bf`，测得 **37.730 秒 kernel + 68.332 秒
 userspace = 106.062 秒**。系统直接从 UFS ext4 启动，没有解压完整 root
