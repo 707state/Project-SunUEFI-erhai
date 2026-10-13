@@ -188,7 +188,7 @@
       "mode": "0644",
       "uid": 0,
       "gid": 0,
-      "sha256": "5f789106ba7dc81ac6f71365237c7f5aad3403ccc0c73ba6cc19e5461098a479",
+      "sha256": "02d001e3628d03751a75ec06d65ae7423d1bc979216401b8f7add29658bce48a",
       "source": "rootfs/overlay/usr/share/alsa/ucm2/Qualcomm/sm8750/Xiaomi-Pad-8-Pro/HiFi.conf",
       "source_sha256": "ed1b91e6f7e4cef76f1f60cfe3dc01d249cfb0267bb983bfc362df8f4f97609c",
       "source_git_mode": "100644",
