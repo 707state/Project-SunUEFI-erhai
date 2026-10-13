@@ -34,13 +34,18 @@
 
 !include PakalaPkg/PakalaPkg.dsc.inc
 
+# DIAGNOSTIC overrides (used for both DEBUG and RELEASE-diag builds): framebuffer
+# serial + BaseDebugLibSerialPort with all print levels. PropertyMask 0x2F enables
+# asserts (exception reports with register context for crash triage);
+# ClearMemory stays 0 — never poison memory the vendor drivers expect intact.
+# For a pure-RELEASE build flip the mask to 0x00.
 # RELEASE-DIAGNOSTIC overrides: keep the vendor drivers' RELEASE semantics (asserts
 # compiled out — the vendor uefi_a is RELEASE_CLANG160LINUX and its drivers rely on
 # non-fatal error paths) while RESTORING console output for bring-up: framebuffer
 # serial + BaseDebugLibSerialPort with all print levels, PropertyMask 0 (no asserts,
 # no deadloop), memory retained (no DEBUG ClearMemory poisoning).
 [PcdsFixedAtBuild]
-  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x00
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x2F
   gEfiMdePkgTokenSpaceGuid.PcdDebugClearMemoryValue|0x00
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8007EE0F
 
