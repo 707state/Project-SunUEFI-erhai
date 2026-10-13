@@ -1,0 +1,10 @@
+[Defines]
+  INF_VERSION                    = 0x0001001B
+  BASE_NAME                      = FontDxe
+  FILE_GUID                      = ED15FFD5-BC96-4107-9118-95366600188E
+  MODULE_TYPE                    = UEFI_DRIVER
+  VERSION_STRING                 = 1.0
+
+[Binaries.AARCH64]
+  DXE_DEPEX|FontDxe.depex|*
+  PE32|FontDxe.efi|*

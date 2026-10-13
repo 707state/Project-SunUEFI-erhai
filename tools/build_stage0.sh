@@ -43,10 +43,28 @@ if [[ "$sun_profile" == erhai ]]; then
     sun_orig="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['original_root'])" \
       "$sun_root/.firmware-workspace.json")"
   fi
-  rm -rf "$sun_ws/Platforms/OnePlus/erhaiPkg"
+  rm -rf "$sun_ws/Platforms/OnePlus/erhaiPkg" "$sun_ws/Binaries/erhai"
   cp -R "$sun_orig/uefi/platforms/erhaiPkg" "$sun_ws/Platforms/OnePlus/erhaiPkg"
   find "$sun_ws/Platforms/OnePlus/erhaiPkg" -name .DS_Store -delete
+  # Assemble Binaries/erhai/<Name>/{inf,efi,depex} from the vendor extraction.
+  python3 - "$sun_orig" "$sun_ws" <<'PY_BIN'
+import shutil, sys
+from pathlib import Path
+orig, ws = Path(sys.argv[1]), Path(sys.argv[2])
+src, inf_src = orig / 'vendor/erhai/native', orig / 'vendor/erhai/native-inf'
+out = ws / 'Binaries/erhai'
+for inf in sorted(inf_src.glob('*.inf')):
+    name = inf.stem
+    dst = out / name
+    dst.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(inf, dst / inf.name)
+    shutil.copy2(src / f'{name}.efi', dst / f'{name}.efi')
+    depex = src / f'{name}.depex'
+    if depex.is_file():
+        shutil.copy2(depex, dst / f'{name}.depex')
+PY_BIN
   test -f "$sun_ws/Platforms/OnePlus/erhaiPkg/erhai.dsc"
+  test -f "$sun_ws/Binaries/erhai/ClockDxe/ClockDxe.inf"
 else
   test -f "$sun_ws/Platforms/Xiaomi/${sun_name}Pkg/${sun_name}.dsc"
 fi

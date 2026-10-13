@@ -7,11 +7,17 @@
 
 ## 当前来源与边界
 
-本包**没有 erhai 实机采集**。所有板级输入来自两个可核查的替代来源：
+2026-10-13 起原生 DXE 全部换用 **erhai 本机提取**（`vendor/erhai/native`，
+59 个驱动，来自设备 `uefi_a.img` 的 FVMAIN 解包；派发顺序照抄原厂 FV 序列）。
+此前的 dodge（OnePlus 13）替身二进制已全部移除——实测其在 erhai 上：
+TZ 三件套 `SmcInvokeInit` 返回 NOT_FOUND；ClockDxe 挂死 DXE（无自动重启）。
+erhai 自己的 TZ/时钟/电压驱动与这台设备的 TZ/AOP 固件配套。仍待实机验证。
+
+其他板级输入仍来自可核查的替代来源：
 
 | 内容 | 来源 | 说明 |
 | --- | --- | --- |
-| 原生 DXE 二进制 | 固定上游 Mu-Silicium `Binaries/dodge`（OnePlus 13，SM8750-AB） | 同 SoC 同厂商的官方固件提取，上游固定 commit；包括 EnvDxeEnhanced、ChipInfoDxe、PlatformInfoDxe、DALSYSDxe、HWIODxe、HALIOMMUDxe、SmemDxe。原生驱动派发顺序必须遵循 dodge 自己的 `Include/APRIORI.inc`（SmemDxe → DALSYSDxe → HWODxe → ChipInfo → PlatformInfo → HALIOMMU）：ChipInfoDxe 内静态链接了 DALModEnv，若在 DALSys/Smem 之前派发会在 `DALModEnv.c+115 !EFI_ERROR` 卡死。**不含 TZ 三件套**（ShmBridgeDxeLA/ScmDxeCompat/TzDxeLA）：实机 fastboot boot 显示 dodge 的 `BOOT.MXF.2.5.1` TzDxeLA 在 erhai 的 TZ 固件上 `SmcInvokeInit` 返回 `EFI_NOT_FOUND(0xE)`、`ActivateTzEmbeddedSecureImage` 失败并卡死 DXE 派发；stage-0 无 SCM 依赖。恢复 TZ 需从 erhai 本机固件提取其原生 DXE（走 `vendor/piano` 同款流程），不能用 OnePlus 13 的 |
+| （历史）dodge 原生二进制 | 已被本机提取取代，见上 | 同 SoC 同厂商的官方固件提取，上游固定 commit；包括 EnvDxeEnhanced、ChipInfoDxe、PlatformInfoDxe、DALSYSDxe、HWIODxe、HALIOMMUDxe、SmemDxe。原生驱动派发顺序必须遵循 dodge 自己的 `Include/APRIORI.inc`（SmemDxe → DALSYSDxe → HWODxe → ChipInfo → PlatformInfo → HALIOMMU）：ChipInfoDxe 内静态链接了 DALModEnv，若在 DALSys/Smem 之前派发会在 `DALModEnv.c+115 !EFI_ERROR` 卡死。**不含 TZ 三件套**（ShmBridgeDxeLA/ScmDxeCompat/TzDxeLA）：实机 fastboot boot 显示 dodge 的 `BOOT.MXF.2.5.1` TzDxeLA 在 erhai 的 TZ 固件上 `SmcInvokeInit` 返回 `EFI_NOT_FOUND(0xE)`、`ActivateTzEmbeddedSecureImage` 失败并卡死 DXE 派发；stage-0 无 SCM 依赖。恢复 TZ 需从 erhai 本机固件提取其原生 DXE（走 `vendor/piano` 同款流程），不能用 OnePlus 13 的 |
 | 内存映射 / 配置映射 | 固定上游 `Platforms/OnePlus/dodgePkg` 的 MemoryMapLib / ConfigurationMapLib | SM8750-AB SoC 级布局（UEFI_FD 0xA7100000/3 MiB、栈 0xA760D000 等），与 piano 采集件一致 |
 | 设备身份 | LineageOS `android_device_oneplus_erhai`（OPD2415、project-id 24924） | SMBIOS 字符串与 framebuffer 3392×2400（XN242 dual-DSI 2×1696，触控 display-coords 2400×3392 佐证；待实机 bootargs 确认） |
 

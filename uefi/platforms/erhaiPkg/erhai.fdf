@@ -1,6 +1,8 @@
 # Host-only erhai stage-0 diagnostic; NOT hardware validated.
-# Native DXE binaries come from the pinned upstream Binaries/dodge set
-# (OnePlus 13 / SM8750-AB, same SoC as erhai); no private capture is used.
+# Native DXE binaries are erhai's OWN, extracted from the device's uefi_a.img
+# FVMAIN (vendor/erhai/native, 2026-10-13). Dispatch order follows the vendor's
+# own FVMAIN sequence; the TZ trio is restored with erhai SCM/Tz binaries that
+# match this device's TrustZone. Storage: erhai UFSDxe + Mu disk generics.
 # Native dispatch order mirrors dodgePkg/Include/APRIORI.inc: SmemDxe -> DALSYS
 # -> HWIO -> ChipInfo. The piano (Xiaomi) order ChipInfo-first deadlocks the
 # statically-linked DALModEnv inside ChipInfoDxe (DALModEnv.c+115 !EFI_ERROR).
@@ -8,6 +10,10 @@
 # generic Disk/Partition/FAT stack so the ESP can be enumerated. The clock and
 # rail dependencies follow dodge's own APRIORI order (ULog/IPCC/CmdDb/PwrUtils/
 # Npa/Rpmh/Mailbox/Vcs/Clock/ICB); PMIC-dependent modules are still excluded.
+# Bisect round 2 (2026-10-13, real erhai DTB): full stack still dies after
+# Vcs/Clock with NO auto-reboot -> the DXE core hangs inside/after these dodge
+# binaries regardless of DTB provenance. This round: VcsDxe kept, ClockDxe out.
+# Prior bisect: both out -> display alive, UFSDxe dies at UfsCoreBspLib.c+188.
 # Bisect result (2026-10-13): removing VcsDxe+ClockDxe keeps the inherited
 # display alive but UFSDxe then dies at UfsCoreBspLib.c+188 (host controller
 # init without clock/voltage). The display loss and the UFS requirements share
@@ -50,7 +56,6 @@ READ_STATUS = TRUE
   APRIORI DXE {
     INF MdeModulePkg/Core/Dxe/DxeMain.inf
     INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
-    INF Binaries/dodge/QcomPkg/Drivers/EnvDxe/EnvDxeEnhanced.inf
     INF MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
     INF MdeModulePkg/Universal/ReportStatusCodeRouter/RuntimeDxe/ReportStatusCodeRouterRuntimeDxe.inf
     INF MdeModulePkg/Universal/StatusCodeHandler/RuntimeDxe/StatusCodeHandlerRuntimeDxe.inf
@@ -66,22 +71,50 @@ READ_STATUS = TRUE
     INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
     INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
     INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/SmemDxe/SmemDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/HWIODxe/HWIODxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/ULogDxe/ULogDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/IPCCDxe/IPCCDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/CmdDbDxe/CmdDbDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/PwrUtilsDxe/PwrUtilsDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/NpaDxe/NpaDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/MailboxDxe/MailboxDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/VcsDxe/VcsDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/ClockDxe/ClockDxe.inf
-    INF Binaries/dodge/QcomPkg/Drivers/ICBDxe/ICBDxe.inf
+  INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
+  INF Binaries/erhai/SmemDxe/SmemDxe.inf
+  INF Binaries/erhai/DALSys/DALSys.inf
+  INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
+  INF Binaries/erhai/ChipInfo/ChipInfo.inf
+  INF Binaries/erhai/PlatformInfoDxeDriver/PlatformInfoDxeDriver.inf
+  INF Binaries/erhai/HALIOMMU/HALIOMMU.inf
+  INF Binaries/erhai/ULogDxe/ULogDxe.inf
+  INF Binaries/erhai/CmdDbDxe/CmdDbDxe.inf
+  INF Binaries/erhai/PwrUtilsDxe/PwrUtilsDxe.inf
+  INF Binaries/erhai/RpmhDxe/RpmhDxe.inf
+  INF Binaries/erhai/NpaDxe/NpaDxe.inf
+  INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
+  INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
+  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
+  INF Binaries/erhai/VcsDxe/VcsDxe.inf
+  INF Binaries/erhai/ClockDxe/ClockDxe.inf
+  INF Binaries/erhai/ICBDxe/ICBDxe.inf
+  INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
+  INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
+  INF Binaries/erhai/UFSDxe/UFSDxe.inf
+    INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
+    INF Binaries/erhai/SmemDxe/SmemDxe.inf
+    INF Binaries/erhai/DALSys/DALSys.inf
+    INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
+    INF Binaries/erhai/ChipInfo/ChipInfo.inf
+    INF Binaries/erhai/PlatformInfoDxeDriver/PlatformInfoDxeDriver.inf
+    INF Binaries/erhai/HALIOMMU/HALIOMMU.inf
+    INF Binaries/erhai/ULogDxe/ULogDxe.inf
+    INF Binaries/erhai/CmdDbDxe/CmdDbDxe.inf
+    INF Binaries/erhai/PwrUtilsDxe/PwrUtilsDxe.inf
+    INF Binaries/erhai/RpmhDxe/RpmhDxe.inf
+    INF Binaries/erhai/NpaDxe/NpaDxe.inf
+    INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
+    INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
+    INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
+    INF Binaries/erhai/VcsDxe/VcsDxe.inf
+    INF Binaries/erhai/ClockDxe/ClockDxe.inf
+    INF Binaries/erhai/ICBDxe/ICBDxe.inf
+    INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+    INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
+    INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
+    INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
     INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
     INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
@@ -89,7 +122,6 @@ READ_STATUS = TRUE
     INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
     INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
     INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
@@ -98,7 +130,6 @@ READ_STATUS = TRUE
   }
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
   INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
-  INF Binaries/dodge/QcomPkg/Drivers/EnvDxe/EnvDxeEnhanced.inf
   INF MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
   INF MdeModulePkg/Universal/ReportStatusCodeRouter/RuntimeDxe/ReportStatusCodeRouterRuntimeDxe.inf
   INF MdeModulePkg/Universal/StatusCodeHandler/RuntimeDxe/StatusCodeHandlerRuntimeDxe.inf
@@ -114,22 +145,28 @@ READ_STATUS = TRUE
   INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
   INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/SmemDxe/SmemDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/DALSYSDxe/DALSYSDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/HWIODxe/HWIODxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/ULogDxe/ULogDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/IPCCDxe/IPCCDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/CmdDbDxe/CmdDbDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/PwrUtilsDxe/PwrUtilsDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/NpaDxe/NpaDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/MailboxDxe/MailboxDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/VcsDxe/VcsDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/ClockDxe/ClockDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/ICBDxe/ICBDxe.inf
+  INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
+  INF Binaries/erhai/SmemDxe/SmemDxe.inf
+  INF Binaries/erhai/DALSys/DALSys.inf
+  INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
+  INF Binaries/erhai/ChipInfo/ChipInfo.inf
+  INF Binaries/erhai/PlatformInfoDxeDriver/PlatformInfoDxeDriver.inf
+  INF Binaries/erhai/HALIOMMU/HALIOMMU.inf
+  INF Binaries/erhai/ULogDxe/ULogDxe.inf
+  INF Binaries/erhai/CmdDbDxe/CmdDbDxe.inf
+  INF Binaries/erhai/PwrUtilsDxe/PwrUtilsDxe.inf
+  INF Binaries/erhai/RpmhDxe/RpmhDxe.inf
+  INF Binaries/erhai/NpaDxe/NpaDxe.inf
+  INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
+  INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
+  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
+  INF Binaries/erhai/VcsDxe/VcsDxe.inf
+  INF Binaries/erhai/ClockDxe/ClockDxe.inf
+  INF Binaries/erhai/ICBDxe/ICBDxe.inf
+  INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
+  INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
+  INF Binaries/erhai/UFSDxe/UFSDxe.inf
   INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
@@ -137,7 +174,6 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
-  INF Binaries/dodge/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
