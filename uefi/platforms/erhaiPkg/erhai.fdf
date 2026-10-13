@@ -71,6 +71,8 @@ READ_STATUS = TRUE
     INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
     INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
     INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
+  INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
+  INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
   INF Binaries/erhai/PILDxe/PILDxe.inf
@@ -145,6 +147,8 @@ READ_STATUS = TRUE
   INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
   INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
+  INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
+  INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
   INF Binaries/erhai/PILDxe/PILDxe.inf
@@ -197,6 +201,13 @@ READ_STATUS = TRUE
   FILE FV_IMAGE = D14C51ED-4F4D-2F2D-EAE4-77914692D046 {
     SECTION RAW = Binaries/erhai/slt/panel-fv.bin
     SECTION UI = "SLT"
+  }
+
+  # Device tree published by DtPlatformDxe for DTBExtn consumers (PILDxe /soc/pil/,
+  # UFSDxe /soc/ufs...). The real erhai live FDT with snapshot values stripped.
+  FILE FREEFORM = 25462CDA-221F-47DF-AC1D-259CFAA4E326 {
+    SECTION RAW = Binaries/erhai/cfg/board.dtb
+    SECTION UI = "board.dtb"
   }
 
   # uefipil.cfg: PILDxe parses this (GUID 21E9BDD9, from the vendor SLT FV).
