@@ -28,8 +28,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--header-version', type=int, choices=(3, 4), default=4)
     parser.add_argument('--dtb', type=Path,
-                        default=Path('upstream/Mu-Silicium/Platforms/OnePlus/dodgePkg/FdtBlob/sm8750-oneplus-dodge.dtb'),
-                        help='DTB appended after the gzip kernel; same-SoC stand-in until an erhai capture exists')
+                        default=Path('vendor/erhai/board.dtb'),
+                        help='DTB appended after the gzip kernel (real erhai live FDT)')
     args = parser.parse_args()
     root = active_root(ROOT)
     out = root / 'artifacts/erhai'
@@ -71,9 +71,9 @@ def main():
         'image_bytes': len(blob),
         'image_sha256': sha(blob),
         'notes': 'Standalone stage-0 diagnostic image for fastboot boot; no stock '
-                 'kernel, no APP payload, no flash required. Memory map and DTB '
-                 'are same-SoC stand-ins from dodgePkg until an erhai capture is '
-                 'prepared with tools/prepare_erhai.py.',
+                 'kernel, no APP payload, no flash required. DTB is the real erhai '
+                 'live FDT (vendor/erhai/board.dtb); memory map remains a '
+                 'same-SoC stand-in until an xbl_config capture is prepared.',
     }
     (out / 'erhai-stage0-image.json').write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, indent=2))

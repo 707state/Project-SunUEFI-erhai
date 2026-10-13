@@ -15,3 +15,4 @@ uefi/handoff/bootshim/BootShim.elf
 boot_b.img
 boot_a.img
 *.boot.img
+erhai-live.dtb

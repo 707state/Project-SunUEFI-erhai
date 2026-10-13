@@ -8,8 +8,11 @@
 # generic Disk/Partition/FAT stack so the ESP can be enumerated. The clock and
 # rail dependencies follow dodge's own APRIORI order (ULog/IPCC/CmdDb/PwrUtils/
 # Npa/Rpmh/Mailbox/Vcs/Clock/ICB); PMIC-dependent modules are still excluded.
-# Expect possible display-clock side effects from ClockDxe (CESTA/media/DCD);
-# the 45-second auto-reboot tells DXE liveness apart from a dead screen.
+# Bisect result (2026-10-13): removing VcsDxe+ClockDxe keeps the inherited
+# display alive but UFSDxe then dies at UfsCoreBspLib.c+188 (host controller
+# init without clock/voltage). The display loss and the UFS requirements share
+# the same clock/rail stack; the fix is a real erhai DTB with piano-style
+# display-clock-lease handling, not dropping drivers.
 # The dodge TZ trio (ShmBridgeDxeLA / ScmDxeCompat / TzDxeLA) is deliberately
 # absent: its BOOT.MXF.2.5.1 SmcInvokeInit returns EFI_NOT_FOUND on erhai's TZ
 # firmware and hangs dispatch. Stage-0 needs no SCM. Restore TZ from erhai's

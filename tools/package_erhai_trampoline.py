@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Host-only combined stock-GKI/erhai-stage0 BOOT image for the inactive slot.
 
-Adapts the piano trampoline layout to OnePlus erhai (Pad 2 Pro): BOOT v4 with
-the DTB carried INSIDE the boot image (dtb_size != 0, unlike piano). The stock
-Image stays untouched at the kernel base; request pages, selector, BootShim,
-stage-0 FD and a 64-byte APPv1 stub follow the GKI image_size working area.
-A copy of the stock DTB is placed at the file offset ABL derives from the NEW
-kernel_size, so ABL still loads a valid DTB and passes it in x0.
+Adapts the piano trampoline layout to OnePlus erhai (Pad 2 Pro). The real
+stock boot_b.img measured 2026-10-13: BOOT4, raw GKI, dtb_size == 0 — the
+vendor DTB arrives via DTBO/vendor_boot, NOT inside BOOT (LineageOS builds
+differ from stock). The stock Image stays untouched at the kernel base;
+request pages, selector, BootShim, stage-0 FD and a 64-byte APPv1 stub follow
+the GKI image_size working area. If dtb_size were set, a DTB copy would be
+placed at the file offset ABL derives from the NEW kernel_size.
 
 Never writes a device; flashing to the inactive slot is an explicit user
 action (boot_a when slot b is active — the user reported active=b).
@@ -54,7 +55,8 @@ def erhai_stock(source, boot_bytes):
             'Unsupported original GKI entry branch')
     require(b'SUNUEFI-SPLITv1\0' not in kernel,
             'Input is already wrapped; restore/extract its original kernel first')
-    # erhai carries the DTB inside the boot image; piano does not (field==0).
+    # Stock erhai BOOT measured dtb_size == 0 (DTB comes via DTBO/vendor_boot);
+    # keep the branch for LineageOS-style inputs that do carry one.
     dtb_size = struct.unpack_from('<I', source, 1580)[0]
     dtb_bytes = b''
     if dtb_size:
@@ -70,6 +72,67 @@ def erhai_stock(source, boot_bytes):
                                'cmdline': cmdline.decode(errors='replace'),
                                'kernel_sha256': digest(kernel),
                                'dtb_sha256': digest(dtb_bytes)}
+
+
+def erhai_dtb_for_abl():
+    """Return the real erhai live FDT with runtime snapshot values stripped.
+
+    /chosen properties set by the previous boot (initrd pointers, kaslr-seed)
+    must not leak into the next handoff; ABL rewrites them for its own kernel
+    path. Values are zeroed in place, sizes kept, mirroring the piano live-DTB
+    cleaning in tools/prepare_piano.py.
+    """
+    import sys
+    sys.path.insert(0, str(ROOT / 'tools'))
+    from compose_piano_dtb import read_fdt
+    data = bytearray((ROOT / 'vendor/erhai/board.dtb').read_bytes())
+    nodes = read_fdt(bytes(data))
+    chosen = nodes['tree'].get('/chosen', {})
+    STRIP = ('linux,initrd-start', 'linux,initrd-end', 'kaslr-seed', 'rng-seed',
+             'serial-number', 'linux,elfcorehdr', 'linux,usable-memory-range')
+    import struct as _s
+    # Locate the /chosen property blocks in the raw blob: find the bootargs
+    # property inside /chosen and zero the snapshot props that follow in the
+    # structure block. Rather than full FDT surgery, zero the prop VALUES by
+    # finding each 8-byte little/big pattern is unreliable; instead rebuild via
+    # offsets recorded by the parser when available.
+    # Practical approach: the props are small and adjacent; find 'chosen' node
+    # in strings block, then walk its property records in the struct block.
+    # FDT layout: header, rsvmap, struct block, strings block.
+    totalsize, off_struct, off_strings = _s.unpack_from('>III', data, 4 + 4 + 8)
+    def find_string(name):
+        blob = bytes(data[off_strings:totalsize])
+        i = blob.find(name.encode() + b'\0')
+        return off_strings + i if i >= 0 else None
+    props = {name: find_string(name) for name in STRIP}
+    # walk struct block: tokens FDT_BEGIN_NODE(1) FDT_END_NODE(2) FDT_PROP(3)
+    # FDT_NOP(4) FDT_END(9)
+    i = off_struct
+    in_chosen = False
+    depth = 0
+    while i < off_strings:
+        token = _s.unpack_from('>I', data, i)[0]
+        if token == 1:
+            end = data.index(b'\0', i + 4)
+            name = bytes(data[i + 4:end]).decode(errors='replace')
+            if name == 'chosen':
+                in_chosen = True
+            i = (end + 1 + 3) & ~3
+        elif token == 2:
+            if in_chosen and name == 'chosen':
+                break
+            i += 4
+        elif token == 3:
+            plen = _s.unpack_from('>I', data, i + 4)[0]
+            nameoff = _s.unpack_from('>I', data, i + 8)[0]
+            pname = bytes(data[nameoff:nameoff + 32]).split(b'\0')[0].decode(errors='replace')
+            if in_chosen and pname in STRIP:
+                for j in range(i + 12, i + 12 + plen):
+                    data[j] = 0
+            i = (i + 12 + plen + 3) & ~3
+        else:
+            i += 4
+    return bytes(data)
 
 
 def stage0_app_stub():
@@ -110,11 +173,19 @@ def package(stock, output, boot_bytes, uefi_request=False):
         header[44:1580] = command_line.ljust(1536, b'\0')
     body = bytearray(combined)
     if dtb_bytes:
+        # Replace the stock DTB copy with the REAL erhai live FDT (cleaned):
+        # native drivers (ClockDxe/VcsDxe/UFSDxe) then read this device's actual
+        # nodes instead of OnePlus 13 dodge configuration.
+        erhai_dtb = erhai_dtb_for_abl()
         body.extend(b'\0' * (align(len(body)) - len(body)))
         dtb_new_off = PAGE + align(len(combined))
-        body.extend(dtb_bytes)
+        body.extend(erhai_dtb)
         layout['dtb_copy_offset'] = dtb_new_off
-        layout['dtb_copy_bytes'] = len(dtb_bytes)
+        layout['dtb_copy_bytes'] = len(erhai_dtb)
+        layout['dtb_copy_source'] = 'vendor/erhai/board.dtb (live FDT, snapshot values stripped)'
+        require(PAGE + len(combined) + align(len(erhai_dtb)) < boot_bytes, 'erhai DTB exceeds boot capacity')
+    else:
+        erhai_dtb = b''
     image = output / 'ErhaiUEFI-combined.img'
     image.write_bytes(bytes(header) + bytes(body))
     total_file = PAGE + len(body)
@@ -147,6 +218,7 @@ def package(stock, output, boot_bytes, uefi_request=False):
     outputs = {'ErhaiUEFI-stage0.fd': fd_bytes, 'BootShim.bin': shim_bytes,
                'app-payload.bin': app, 'selector.bin': selector}
     if dtb_bytes:
+        outputs['abl-dtb.dtb'] = erhai_dtb_for_abl()
         outputs['stock-dtb.dtb'] = dtb_bytes
     for name, data in outputs.items():
         (output / name).write_bytes(data)

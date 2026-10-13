@@ -1,0 +1,7 @@
+{
+  "source": "adb shell su -c \"cat /sys/firmware/fdt\" on the user erhai device (prjname=24926)",
+  "sha256": "7992f5f9383c395f715fa94f49354940e3197844e10c19b4e5bf52536ded10d0",
+  "bytes": 1515496,
+  "panel": "qcom,mdss_dsi_panel_XN242_P_D_A0024_vid PanelID-0x00C18000 (from /proc/cmdline)",
+  "notes": "Live kernel FDT of the running erhai. Contains runtime /chosen snapshot values (initrd/kaslr) that must be stripped before handing to Linux; fine as UEFI driver input. UFS controller at /soc/ufsphy_mem@1d80000; display CESTA at /soc/qcom,sde_cesta@0x0af30000."
+}
