@@ -85,6 +85,8 @@ READ_STATUS = TRUE
   INF Binaries/erhai/NpaDxe/NpaDxe.inf
   INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
   INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
+  INF Binaries/erhai/FvDxe/FvDxe.inf
+  INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
@@ -107,7 +109,11 @@ READ_STATUS = TRUE
     INF Binaries/erhai/NpaDxe/NpaDxe.inf
     INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
     INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
-    INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
+    INF Binaries/erhai/FvDxe/FvDxe.inf
+    INF Binaries/erhai/PILDxe/PILDxe.inf
+    INF Binaries/erhai/FvDxe/FvDxe.inf
+  INF Binaries/erhai/PILDxe/PILDxe.inf
+  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
     INF Binaries/erhai/VcsDxe/VcsDxe.inf
     INF Binaries/erhai/ClockDxe/ClockDxe.inf
     INF Binaries/erhai/ICBDxe/ICBDxe.inf
@@ -159,6 +165,8 @@ READ_STATUS = TRUE
   INF Binaries/erhai/NpaDxe/NpaDxe.inf
   INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
   INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
+  INF Binaries/erhai/FvDxe/FvDxe.inf
+  INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
