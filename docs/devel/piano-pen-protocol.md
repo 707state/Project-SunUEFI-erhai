@@ -178,6 +178,10 @@ CPU前缀仍不能交给完整 `parse_data_package`：该函数还读取真实�
 
 [`piano-pen-bluetooth.py`](../../linux/userspace/pen/piano-pen-bluetooth.py) 已实现该序列，每步等待真实回应，并按真正的 `SW_PEN_INSERTED` 发送Hall状态。无线参数和解算校准是两类数据；本机无线参数放在BSP的 `p81c-radio.json`，BOE／CSOT位置校准仍来自实际原厂ini。程序通过统一runtime安装，参数通过BSP和硬件配置组装安装，不新增服务或第二个THP流读取者。
 
+原厂还有一条独立的地址获取通路。固定设备模块 `sc96231_tx.ko` 的 `sc96231_get_pen_mac` 从 `0x200001de` 读取两字节、从 `0x200001e0` 读取四字节；MCA 的 `mca_wireless_rev_pen_data_handle_work` 调用该函数后发送 uevent。原厂蓝牙扩展的 `oobhelper/f.java::onUEvent` 处理 `POWER_SUPPLY_PEN_MAC`，获取指定地址的 `BluetoothDevice`，按绑定状态进入连接或配对流程。这解释了原厂并非仅依赖用户打开扫描列表。该静态调用链不证明充电芯片主动唤醒 BLE 的电气时序，不能把上述地址读取直接当作唤醒命令。
+
+Linux 的伴随进程现在只在断连时进行有间隔的扫描，并直接重连 BlueZ 中已经配对且受信任的 P81C；已连接后停止自己的扫描。适配器由 BlueZ 实际枚举，不固定使用 `hci0`。充电芯片的供电、地址获取及可能的无线唤醒仍未接入，跨系统切换后笔不广播的问题尚未解决。
+
 普通重启返回Linux后，完整序列收到所有查询和设置回应。随后按平板按钮倒计时做真实悬停和划线，得到4条Report2、Report5为0，1728条THP记录全部为type3。结果保存在同目录 `result.json`。完整无线初始化已经完成，绘画数据仍未产生；这条差异不能继续当作已证明的唯一根因。
 
 下一步核对原厂笔扫描与显示时序。Linux实际控制器读取为game_mode0、hand_scan_rate180、pen_scan_rate240；不能归因为游戏模式1。原厂扩展命令0x0f是游戏模式布尔量，不能猜成LCD刷新率枚举。同机原厂笔服务接收PEN_FPS事件并映射到60／90桶，用于蓝牙时序；该处理本身未调用显示服务切换到60／120Hz。是否由其他原厂显示／触控模块协调，以及实际IC通知命令，仍需进一步核对。

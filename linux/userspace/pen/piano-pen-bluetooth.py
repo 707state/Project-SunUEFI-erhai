@@ -61,44 +61,108 @@ def profile(path):
 
 
 class LeScan:
-    """Keep BlueZ discovery running while waiting for the pen to advertise.
+    """Bound discovery while disconnected and reconnect an already paired pen.
 
-    The pen only starts advertising after the touch controller or the magnetic
-    dock wakes it; BlueZ does not find it on its own. Discovery is idempotent
-    and is stopped on exit, so a normal paired reconnect is unaffected.
+    Discovery only finds an advertising radio; it does not wake the pen.
+    Own one BlueZ discovery session and never stop another client's session.
     """
 
     def __init__(self):
-        from gi.repository import Gio
-        self.Gio = Gio
+        from gi.repository import Gio, GLib
+        self.Gio, self.GLib = Gio, GLib
         self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-        self.owned = False
+        self.adapter = None
+        self.until = 0
+        self.retry_at = 0
+        self.connect_at = {}
+        self.last_dock = None
+        self.last_error = None
 
-    def start(self):
-        if self.owned:
+    def tick(self, address):
+        now = time.monotonic()
+        try:
+            attached = read_dock()
+        except (RuntimeError, OSError):
+            attached = None
+        if attached is not None and attached != self.last_dock:
+            self.last_dock = attached
+            self.retry_at = 0
+        if self.adapter and now >= self.until:
+            self.stop()
+            self.retry_at = now + 90
+        objects = self.bus.call_sync(
+            'org.bluez', '/', 'org.freedesktop.DBus.ObjectManager',
+            'GetManagedObjects', None, None,
+            self.Gio.DBusCallFlags.NONE, 5000, None).unpack()[0]
+        powered = {path for path, interfaces in objects.items()
+                   if interfaces.get('org.bluez.Adapter1', {}).get('Powered')}
+        if self.adapter and self.adapter not in powered:
+            self.stop()
+        if any(
+                device.get('Connected') and
+                (not address or device.get('Address', '').upper() == address.upper()) and
+                re.fullmatch(r'bluetooth:v0022p5081d[0-9a-fA-F]{4}',
+                             device.get('Modalias', ''), re.IGNORECASE)
+                for interfaces in objects.values()
+                for device in [interfaces.get('org.bluez.Device1', {})]):
+            self.stop()
             return
-        self.owned = True
+        for path, interfaces in objects.items():
+            device = interfaces.get('org.bluez.Device1', {})
+            if (device.get('Adapter') not in powered or
+                    not device.get('Paired') or not device.get('Trusted') or
+                    device.get('Connected') or
+                    (address and device.get('Address', '').upper() != address.upper()) or
+                    not re.fullmatch(r'bluetooth:v0022p5081d[0-9a-fA-F]{4}',
+                                     device.get('Modalias', ''), re.IGNORECASE) or
+                    now < self.connect_at.get(path, 0)):
+                continue
+            self.connect_at[path] = now + 30
+            try:
+                self.bus.call_sync('org.bluez', path, 'org.bluez.Device1',
+                                   'Connect', None, None,
+                                   self.Gio.DBusCallFlags.NONE, 1500, None)
+            except self.GLib.Error as error:
+                self.error(error)
+        if self.adapter or now < self.retry_at or not powered:
+            return
+        adapter = sorted(powered)[0]
+        self.retry_at = now + 10
         try:
             self.bus.call_sync(
-                'org.bluez', '/org/bluez/hci0', 'org.bluez.Adapter1',
+                'org.bluez', adapter, 'org.bluez.Adapter1',
+                'SetDiscoveryFilter', self.GLib.Variant('(a{sv})', ({
+                    'Transport': self.GLib.Variant('s', 'le'),
+                    'DuplicateData': self.GLib.Variant('b', False),
+                },)), None, self.Gio.DBusCallFlags.NONE, 5000, None)
+            self.bus.call_sync(
+                'org.bluez', adapter, 'org.bluez.Adapter1',
                 'StartDiscovery', None, None,
                 self.Gio.DBusCallFlags.NONE, 5000, None)
-        except Exception:
-            # Already discovering (another client owns discovery) is fine;
-            # leaving self.owned set avoids repeated failing calls.
-            pass
+        except self.GLib.Error as error:
+            self.error(error)
+            return
+        self.adapter = adapter
+        self.until = time.monotonic() + 30
+        self.last_error = None
+
+    def error(self, error):
+        message = str(error)
+        if message != self.last_error:
+            print(json.dumps({'kind': 'pen_discovery_error', 'message': message}), flush=True)
+            self.last_error = message
 
     def stop(self):
-        if not self.owned:
+        if self.adapter is None:
             return
-        self.owned = False
+        adapter, self.adapter = self.adapter, None
         try:
             self.bus.call_sync(
-                'org.bluez', '/org/bluez/hci0', 'org.bluez.Adapter1',
+                'org.bluez', adapter, 'org.bluez.Adapter1',
                 'StopDiscovery', None, None,
                 self.Gio.DBusCallFlags.NONE, 5000, None)
-        except Exception:
-            pass
+        except self.GLib.Error as error:
+            self.error(error)
 
 
 class Pen:
@@ -286,8 +350,8 @@ def main():
     try:
         while not stopped:
             try:
-                scan.start()
                 pen = Pen(args.address, args.stationary_device)
+                scan.stop()
                 pen.open()
                 pen.initialize(p)
                 last_error = None
@@ -314,6 +378,10 @@ def main():
                 if message != last_error:
                     print(json.dumps({'kind': 'waiting_for_pen', 'message': message}), flush=True)
                     last_error = message
+                try:
+                    scan.tick(args.address)
+                except scan.GLib.Error as scan_error:
+                    scan.error(scan_error)
             finally:
                 if pen is not None:
                     pen.close()
