@@ -93,17 +93,25 @@ PY_RELEASE_SOURCE
       --output build/distros/release-7.2.9 --mesa-dir build/mesa/runtime \
       --sensors-dir build/sensors/runtime --ffmpeg-dir build/ffmpeg/runtime --execute "$@" ;;
   package|esp)
-    python3 tools/package_release.py --uefi artifacts/product/PianoUEFI-product.img \
-      --kernel artifacts/kernels/release-7.2.9 --dtb vendor/piano-linux/board.dtb \
-      --cpu-model-overlay linux/dts/piano-cpu-model.dtso --panel-vendor auto \
-      --dtb-overlay linux/dts/piano-board-identity.dtso \
-      --dtb-overlay linux/dts/piano-regdma-resource.dtso \
-      --dtb-overlay linux/dts/piano-audio-dmic-clock.dtso \
-      --dtb-overlay linux/dts/piano-camera-flash.dtso \
-      --dtb-overlay linux/dts/piano-camera-privacy-led.dtso \
-      --initramfs build/distros/release-7.2.9/initramfs/initramfs.cpio.gz \
-      --rootfs build/distros/release-7.2.9/rootfs --rootfs-manifest build/distros/release-7.2.9/manifest.json \
-      --output artifacts/release-7.2.9 --root-selector LABEL=PIANOROOT "$@" ;;
+    python3 - "$@" <<'PY_PACKAGE'
+import json, subprocess, sys
+from pathlib import Path
+kernel = json.loads(Path('config/release.json').read_text())['kernel']
+args = ['python3', 'tools/package_release.py',
+        '--uefi', 'artifacts/product/PianoUEFI-product.img',
+        '--kernel', 'artifacts/kernels/release-7.2.9',
+        '--dtb', 'vendor/piano-linux/board.dtb',
+        '--cpu-model-overlay', kernel['cpu_model_overlay'],
+        '--panel-vendor', kernel['preferred_display_mode']['panel_vendor']]
+for overlay in kernel['additional_dtb_overlays']:
+    args += ['--dtb-overlay', overlay]
+args += ['--initramfs', 'build/distros/release-7.2.9/initramfs/initramfs.cpio.gz',
+         '--rootfs', 'build/distros/release-7.2.9/rootfs',
+         '--rootfs-manifest', 'build/distros/release-7.2.9/manifest.json',
+         '--output', 'artifacts/release-7.2.9', '--root-selector', kernel['root_policy']]
+subprocess.run(args + sys.argv[1:], check=True)
+PY_PACKAGE
+    ;;
   all)
     "$0" sources
     "$0" uefi
