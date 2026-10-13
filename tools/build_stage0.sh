@@ -107,7 +107,7 @@ done
 export PATH="$EDK_TOOLS_PATH/Source/C/bin:$EDK_TOOLS_PATH/BinWrappers/PosixLike:$PATH"
 export PYTHONPATH="$EDK_TOOLS_PATH/Source/Python${PYTHONPATH:+:$PYTHONPATH}"
 "$PYTHON_COMMAND" "$EDK_TOOLS_PATH/Source/Python/build/build.py" \
-  -a AARCH64 -b DEBUG -t CLANGPDB -p "${sun_name}Pkg/${sun_name}.dsc" -n 8 \
+  -a AARCH64 -b "${SUNUEFI_BUILD_TARGET:-DEBUG}" -t CLANGPDB -p "${sun_name}Pkg/${sun_name}.dsc" -n 8 \
   -D ENABLE_SECUREBOOT=0 -D FD_BASE=0xA7100000 -D FD_SIZE=0x300000 \
   -D FD_BLOCKS=0x300 -D DEVICE_MODEL=0 -D MEMORY_PROTECTION=TRUE -D SHIP_MODE=FALSE \
   -D BUILDID_STRING="$sun_buildid" \
@@ -115,7 +115,7 @@ export PYTHONPATH="$EDK_TOOLS_PATH/Source/Python${PYTHONPATH:+:$PYTHONPATH}"
 make -C "$sun_bootshim" REQUIRES_KERNEL_HEADER=1 FD_BASE=0xA7100000 FD_SIZE=0x300000 \
   OBJCOPY="${SUNUEFI_OBJCOPY:-$sun_tools/bin/aarch64-linux-gnu-objcopy}"
 mkdir -p "$sun_root/artifacts/$sun_profile"
-cp "Build/${sun_name}Pkg/DEBUG_CLANGPDB/FV/SILICIUM_UEFI.fd" "$sun_root/artifacts/$sun_profile/$sun_fd_name"
+cp "Build/${sun_name}Pkg/${SUNUEFI_BUILD_TARGET:-DEBUG}_CLANGPDB/FV/SILICIUM_UEFI.fd" "$sun_root/artifacts/$sun_profile/$sun_fd_name"
 cp "$sun_bootshim/BootShim.bin" "$sun_root/artifacts/$sun_profile/BootShim.bin"
 "$PYTHON_COMMAND" "$sun_root/tools/build_integrity.py" finish --profile "$sun_profile"
 printf 'Stage-0 FD built on host. Hardware boot and OS boot are unverified.\n'
