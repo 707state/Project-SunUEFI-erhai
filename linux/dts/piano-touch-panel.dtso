@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/dts-v1/;
+/plugin/;
+
+/* The panel reset also resets the TDDI touch controller. Use DRM's standard
+ * panel follower lifecycle to reload touch firmware after a modeset. */
+/ {
+	fragment@0 {
+		target-path = "/soc/display-subsystem@ae00000/dsi@ae94000/panel@0";
+		piano_touch_panel: __overlay__ {};
+	};
+	fragment@1 {
+		target-path = "/soc/qcom,qupv3_1_geni_se@ac0000/spi@a88000/touchscreen@0";
+		__overlay__ {
+			panel = <&piano_touch_panel>;
+		};
+	};
+};

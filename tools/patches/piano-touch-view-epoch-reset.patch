@@ -1,0 +1,25 @@
+Subject: [PATCH] Recalibrate hand input after touch firmware restarts
+
+The kernel marks the first valid frame after firmware download with EPOCH.
+Release contacts and discard the old matrix reference before decoding new
+frames. The pen owner already processes this flag independently.
+
+--- a/initramfs/touch-view/piano-touch-view.c
++++ b/initramfs/touch-view/piano-touch-view.c
+@@ -1251,6 +1251,16 @@
+ 			if (le16(h + 26) & 1)
+ 				st.flag_valid++;
+ 			observe_record(h);
++			if (le16(h + 26) & 2) {
++				if (opt.mode == MODE_INPUT)
++					ui_report(track(NULL, 0));
++				have_reference = 0;
++				ref_count = 0;
++				ref_type = -1;
++				probe_count = 0;
++				memset(probe_types, 0, sizeof(probe_types));
++				fprintf(stderr, "touch firmware restarted; rebuilding reference\n");
++			}
+ 			capture_record(h, hlen, flen);
+ 			struct piano_pen_output pen_output;
+ 			int pen_ret = piano_pen_owner_record(pen_owner, h + hlen, flen,

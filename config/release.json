@@ -14,7 +14,8 @@
       "linux/dts/piano-regdma-resource.dtso",
       "linux/dts/piano-audio-dmic-clock.dtso",
       "linux/dts/piano-camera-flash.dtso",
-      "linux/dts/piano-camera-privacy-led.dtso"
+      "linux/dts/piano-camera-privacy-led.dtso",
+      "linux/dts/piano-touch-panel.dtso"
     ],
     "root_policy": "LABEL=PIANOROOT",
     "preferred_display_mode": {
