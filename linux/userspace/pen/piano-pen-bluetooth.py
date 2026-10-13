@@ -283,47 +283,49 @@ def main():
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
     scan = LeScan()
-    while not stopped:
-        try:
-            scan.start()
-            pen = Pen(args.address, args.stationary_device)
-            pen.open()
-            pen.initialize(p)
-            last_error = None
-            until = time.monotonic() + args.observe_seconds
-            next_state_check = time.monotonic()
-            while not stopped and (args.follow or time.monotonic() < until):
-                pen.pump()
-                if args.follow and time.monotonic() >= next_state_check:
-                    next_state_check = time.monotonic() + 1
-                    if not pen.connected():
-                        pen.log('disconnected')
-                        break
-                    pen.follow_dock()
-                time.sleep(.01)
-        except InterruptedError:
-            if not stopped:
-                raise
-        except Exception as error:
-            if not args.follow:
-                raise
-            # A missing/docked pen is normal. Reconnect only after BlueZ exposes
-            # the actual peer again; never delete pairing or replay stale IDs.
-            message = str(error)
-            if message != last_error:
-                print(json.dumps({'kind': 'waiting_for_pen', 'message': message}), flush=True)
-                last_error = message
-        finally:
-            if pen is not None:
-                pen.close()
-                pen = None
-        if not args.follow or stopped:
-            break
-        for _ in range(20):
-            if stopped:
+    try:
+        while not stopped:
+            try:
+                scan.start()
+                pen = Pen(args.address, args.stationary_device)
+                pen.open()
+                pen.initialize(p)
+                last_error = None
+                until = time.monotonic() + args.observe_seconds
+                next_state_check = time.monotonic()
+                while not stopped and (args.follow or time.monotonic() < until):
+                    pen.pump()
+                    if args.follow and time.monotonic() >= next_state_check:
+                        next_state_check = time.monotonic() + 1
+                        if not pen.connected():
+                            pen.log('disconnected')
+                            break
+                        pen.follow_dock()
+                    time.sleep(.01)
+            except InterruptedError:
+                if not stopped:
+                    raise
+            except Exception as error:
+                if not args.follow:
+                    raise
+                # A missing/docked pen is normal. Reconnect only after BlueZ
+                # exposes the actual peer again; never replay stale IDs.
+                message = str(error)
+                if message != last_error:
+                    print(json.dumps({'kind': 'waiting_for_pen', 'message': message}), flush=True)
+                    last_error = message
+            finally:
+                if pen is not None:
+                    pen.close()
+                    pen = None
+            if not args.follow or stopped:
                 break
-            time.sleep(.1)
-    scan.stop()
+            for _ in range(20):
+                if stopped:
+                    break
+                time.sleep(.1)
+    finally:
+        scan.stop()
 
 
 if __name__ == '__main__':
