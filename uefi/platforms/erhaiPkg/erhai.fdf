@@ -71,8 +71,6 @@ READ_STATUS = TRUE
     INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
     INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
     INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
-  INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
-  INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
   INF Binaries/erhai/PILDxe/PILDxe.inf
@@ -117,6 +115,8 @@ READ_STATUS = TRUE
     INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
     INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
+    INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
+    INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
     INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
     INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
     INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
@@ -147,8 +147,6 @@ READ_STATUS = TRUE
   INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
   INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
-  INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
-  INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
   INF Binaries/erhai/PILDxe/PILDxe.inf
@@ -172,6 +170,8 @@ READ_STATUS = TRUE
   INF Binaries/erhai/UFSDxe/UFSDxe.inf
   INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
+  INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
+  INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
