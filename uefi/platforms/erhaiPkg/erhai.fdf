@@ -73,6 +73,7 @@ READ_STATUS = TRUE
     INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/SmemDxe/SmemDxe.inf
   INF Binaries/erhai/DALSys/DALSys.inf
@@ -93,6 +94,7 @@ READ_STATUS = TRUE
   INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
     INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+    INF Binaries/erhai/PILDxe/PILDxe.inf
     INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
     INF Binaries/erhai/SmemDxe/SmemDxe.inf
     INF Binaries/erhai/DALSys/DALSys.inf
@@ -123,7 +125,6 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   INF FatPkg/EnhancedFatDxe/Fat.inf
   INF Binaries/erhai/FvDxe/FvDxe.inf
-  INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
 
   }
@@ -146,6 +147,7 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/SmemDxe/SmemDxe.inf
   INF Binaries/erhai/DALSys/DALSys.inf
@@ -176,7 +178,6 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   INF FatPkg/EnhancedFatDxe/Fat.inf
   INF Binaries/erhai/FvDxe/FvDxe.inf
-  INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
 
 
@@ -196,6 +197,12 @@ READ_STATUS = TRUE
   FILE FV_IMAGE = D14C51ED-4F4D-2F2D-EAE4-77914692D046 {
     SECTION RAW = Binaries/erhai/slt/panel-fv.bin
     SECTION UI = "SLT"
+  }
+
+  # uefipil.cfg: PILDxe parses this (GUID 21E9BDD9, from the vendor SLT FV).
+  FILE FREEFORM = 21E9BDD9-6C3F-4F10-84A5-BBEC322741F1 {
+    SECTION RAW = Binaries/erhai/cfg/uefipil.cfg
+    SECTION UI = "uefipil.cfg"
   }
 
   # uefiplat.cfg: the OUTER-FV text config (GUID DDE58710, 501 B) that
