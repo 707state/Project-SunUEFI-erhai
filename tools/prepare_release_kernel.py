@@ -41,7 +41,7 @@ TARGETS[DEFAULT_TARGET] = {
     **TARGETS['kernel69'],
     'series_target': 'kernel69',
     'patch_tree': TARGETS['kernel69']['target_tree'],
-    'target_tree': 'c6224037c12ecd86d46c06f58918249195bffee4',
+    'target_tree': '807ae8dba2dd8465fff2e5217fa8b26466fe8fc0',
     'stable_commit': '5fce161649b4d779d1b76d9fcd52dc77779774b8',
     'stable_tree': 'c278d1443495d2a1a07fff2bcfb286b5c35baaea',
     'stable_version': '7.2.9',
@@ -146,6 +146,10 @@ TARGETS[DEFAULT_TARGET] = {
     'piano_pen_dock_patch': {
         'file': 'patches/linux/7.2.9/0027-input-piano-pen-dock.patch',
         'sha256': '78c434c13f745a8e47152d2c550917abf206a2250da49bbc3d7084049e483a4d',
+    },
+    'nvt_system_resume_patch': {
+        'file': 'patches/linux/7.2.9/0028-nvt-ts-system-resume-reenable.patch',
+        'sha256': '052ec2449c969ca044e21dcf0aa3e357434cc6e791c54f201493e5b6650f68df',
     },
     'dsi_stop_order_patch': {
         'file': 'patches/linux/7.2.9/0008-dsi-bonded-stop-slave-first.patch',
@@ -314,7 +318,7 @@ def write_manifest(path, record):
 
 def update_patches(root, policy):
     result = {}
-    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch', 'dsi_pll_registration_patch', 'dsi_slave_restore_patch', 'dpu_video_stop_order_patch', 'piano_pen_dock_patch'):
+    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch', 'dsi_pll_registration_patch', 'dsi_slave_restore_patch', 'dpu_video_stop_order_patch', 'piano_pen_dock_patch', 'nvt_system_resume_patch'):
         if key not in policy:
             continue
         row = policy[key]
@@ -380,6 +384,7 @@ def merge_stable(work, policy, paths):
         ('dsi_slave_restore_patch', 'fix(drm): restore SM8750 bonded slave clock state', 'dsi_slave_restore_commit'),
         ('dpu_video_stop_order_patch', 'fix(drm): clean video pipeline before stopping frame boundaries', 'dpu_video_stop_order_commit'),
         ('piano_pen_dock_patch', 'feat(input): add Piano magnetic pen-dock switch', 'piano_pen_dock_commit'),
+        ('nvt_system_resume_patch', 'fix(input): re-enable touch after system resume', 'nvt_system_resume_commit'),
     ):
         if key not in paths:
             continue
