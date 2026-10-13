@@ -49,8 +49,9 @@ BLUETOOTH_OVERRIDES={'CONFIG_UHID':'m','CONFIG_HID_XIAOMI':'m',
                     'CONFIG_BT_RFCOMM':'m','CONFIG_BT_RFCOMM_TTY':'y','CONFIG_BT_BNEP':'m'}
 PEN_DOCK_OVERRIDES={'CONFIG_INPUT_XIAOMI_PIANO_PEN_DOCK':'m'}
 USERSPACE_SECURITY_OVERRIDES={'CONFIG_SECURITY_LANDLOCK':'y'}
+PM_DEBUG_OVERRIDES={'CONFIG_PM_DEBUG':'y','CONFIG_PM_SLEEP_DEBUG':'y'}
 ALLOWED_OVERRIDES={**BLUETOOTH_OVERRIDES,**PEN_DOCK_OVERRIDES,**FLASH_OVERRIDES,**EARLY_CPUCP_OVERRIDES,
-                   **USERSPACE_SECURITY_OVERRIDES}
+                   **USERSPACE_SECURITY_OVERRIDES,**PM_DEBUG_OVERRIDES}
 
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -198,6 +199,8 @@ def main():
     parser.add_argument('--build-dir',type=Path,default=OUT)
     parser.add_argument('--artifacts',type=Path,default=ARTIFACTS)
     parser.add_argument('--rebuild',action='store_true',help='Replace generated candidate artifacts with an incremental build')
+    parser.add_argument('--pm-debug',action='store_true',
+                        help='Enable kernel PM stage tests for suspend diagnostics; disabled in normal builds')
     args=parser.parse_args()
     if not 1<=args.jobs<=8:raise SystemExit('Full candidate jobs must be 1..8')
     work,out,artifacts=(path.resolve()for path in (args.worktree,args.build_dir,args.artifacts));commit=args.commit
@@ -216,6 +219,8 @@ def main():
              **module_overrides(flash.read_text(),'flash'),
              **module_overrides(early_cpucp.read_text(),'early-cpucp'),
              **module_overrides(userspace_security.read_text(),'userspace-security')}
+    if args.pm_debug:
+        modules.update(PM_DEBUG_OVERRIDES)
     env,tools=toolchain();out.mkdir(parents=True,exist_ok=True);artifacts.mkdir(parents=True,exist_ok=True)
     build_locks=[]
     lock_root=ROOT/'build/locks';lock_root.mkdir(parents=True,exist_ok=True)

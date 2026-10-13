@@ -6,5 +6,9 @@ power-static=['']
 power-button-action='nothing'
 
 [org/gnome/desktop/session]
-# Keep idle DPMS disabled while native DSI re-enable is not reliable.
-idle-delay=uint32 0
+# Standard GNOME idle blanking; sleep remains separate until resume works.
+idle-delay=uint32 300
+
+[org/gnome/desktop/screensaver]
+lock-enabled=true
+lock-delay=uint32 0

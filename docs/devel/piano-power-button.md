@@ -1,5 +1,23 @@
 # 电源键与保护套合盖
 
+## 当前实现
+
+`linux/desktops/gnome/power-overlay/` 中的同一个电源键助手现在观察真实按键，不独占输入设备。短按电源或合盖先请求 GNOME 锁屏，再通过 Mutter 的显示电源接口关闭面板；再次短按或开盖恢复显示，不解除认证锁。长按仍打开 GNOME 关机菜单。背光调节仅作为显示电源接口调用失败时的回退。
+
+显示 PLL 保存恢复和 DPU 关屏顺序已进入默认内核。GNOME 的默认策略恢复为五分钟空闲后熄屏并立即锁屏，使用标准 `idle-delay`、`lock-enabled` 和 `lock-delay`；用户可以在桌面设置中修改。自动睡眠暂未开启：驱动深层恢复仍存在 Wi-Fi 设备断电后不可访问的问题。休眠也未完成，当前没有磁盘交换区及挂载 root 前的恢复入口。
+
+## 睡眠定位
+
+`tools/build_piano_full_kernel.py --pm-debug` 可在同一源码和驱动配置上增加内核的 `CONFIG_PM_DEBUG`、`CONFIG_PM_SLEEP_DEBUG`，正常构建不启用此选项。它提供 `/sys/power/pm_test`，按内核[官方调试说明](https://docs.kernel.org/power/basic-pm-debugging.html)分阶段测试，避免把 USB 暂时断开直接当作整机重启。应同时记录启动 ID、恢复错误及触控/网络的实际状态；写入 `/sys/power/state` 返回成功也可能伴随驱动恢复失败。
+
+已经完成进程暂停和普通设备暂停、恢复测试。深层测试曾触发重启，也曾返回但 Wi-Fi 恢复失败；`BHI offset: 0xffffffff` 与恢复后的 PCI 配置全 `FF` 表明设备不可访问，后续固件等待超时是连带结果，尚未确定供电/复位恢复的最终修正。
+
+诊断用 [`piano-pm-log.dtso`](../../linux/dts/drafts/piano-pm-log.dtso)保持现有 4 MiB 预留区不变，将 Linux console 放到后一半，避免下一轮 UEFI 的 2 MiB 日志覆盖它。该布局不进入正常发布配置。若故障发生在控制台暂停期间，还需要临时将 `/sys/module/printk/parameters/console_suspend` 设为 `N`，定位后恢复为 `Y`。
+
+## 早期方案与故障记录
+
+以下记录描述已替换的背光方案，以及当时暂缓锁屏的原因。
+
 本地 GNOME 适配位于 `linux/desktops/gnome/power-overlay/`，复用 `piano-power-button.service` 和同名helper，基于固定 debian-piano `25babfe3ff5d8ddee98b1e0ea88152d69a0c01b1`；不修改upstream，不增加另一个daemon。
 
 当前源码行为：短按切换背光，长按0.8秒打开GNOME关机/重启菜单；真实SW_LID闭盖关背光，开盖恢复此前保存的实际亮度。它只打开准确命名的`pmic_pwrkey`和`soc:piano-hall-ml`，仅grab电源键，hall不独占。hall打开时先用`EVIOCGSW`查询当前状态，所以服务启动前已闭盖也能处理；丢事件后跳过队列至SYN_REPORT，再查询当前开关状态。udev仅给这两个event设备添加当前会话的uaccess权限，不读取触摸或键盘事件。
