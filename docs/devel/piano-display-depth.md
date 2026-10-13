@@ -1,5 +1,13 @@
 # Piano 显示位深与 HDR
 
+## 当前状态
+
+当前默认内核采用十位像素输出和 DSC10，标准 `max bpc` 属性为 10，范围为 10～10；这是驱动实际使用的传输配置。标准 1024 项 `GAMMA_LUT` 已接通，GNOME 夜灯可用。HDR 所需的输入传递函数和色域处理尚未接完整，不能把十位输出等同于 HDR。
+
+GNOME 51.1 的显示设置提供 HDR 开关，但没有独立的 8/10/12 位色深选择器；对应源码为 [`cc-display-settings.c`](https://github.com/GNOME/gnome-control-center/blob/51.1/panels/display/cc-display-settings.c)。HDR 开关取决于合成器是否报告 BT.2100 支持。当前不扩宽 `max bpc` 的范围，因为驱动还不能按用户选择重新配置面板和 DSC。
+
+以下保留原厂对照及早期接口分析；其中“尚未接通 Gamma”描述的是早期版本。
+
 2026-10-08，依据 `release-7.2.9` 源码、原厂最终 Android DTB、公开显示驱动及现有 Android HWC/Linux DRM 记录核对。Android 当前没有 HDR layer；尚未取得 HDR 输出时的色彩处理状态或活跃显示寄存器。
 
 ## 已有的十位链路
