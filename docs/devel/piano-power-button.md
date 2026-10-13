@@ -4,13 +4,17 @@
 
 `linux/desktops/gnome/power-overlay/` 中的同一个电源键助手现在观察真实按键，不独占输入设备。短按电源或合盖先请求 GNOME 锁屏，再通过 Mutter 的显示电源接口关闭面板；再次短按或开盖恢复显示，不解除认证锁。长按仍打开 GNOME 关机菜单。背光调节仅作为显示电源接口调用失败时的回退。
 
-显示 PLL 保存恢复和 DPU 关屏顺序已进入默认内核。GNOME 的默认策略恢复为五分钟空闲后熄屏并立即锁屏，使用标准 `idle-delay`、`lock-enabled` 和 `lock-delay`；用户可以在桌面设置中修改。自动睡眠暂未开启：驱动深层恢复仍存在 Wi-Fi 设备断电后不可访问的问题。休眠也未完成，当前没有磁盘交换区及挂载 root 前的恢复入口。
+显示 PLL 保存恢复和 DPU 关屏顺序已进入默认内核。GNOME 的默认策略恢复为五分钟空闲后熄屏并立即锁屏，使用标准 `idle-delay`、`lock-enabled` 和 `lock-delay`；用户可以在桌面设置中修改。PCIe 恢复已修正，直接内核睡眠可以唤醒；桌面睡眠请求后的用户进程恢复仍在定位，因此自动睡眠暂未开启。休眠也未完成，当前没有磁盘交换区及挂载 root 前的恢复入口。
 
 ## 睡眠定位
 
 `tools/build_piano_full_kernel.py --pm-debug` 可在同一源码和驱动配置上增加内核的 `CONFIG_PM_DEBUG`、`CONFIG_PM_SLEEP_DEBUG`，正常构建不启用此选项。它提供 `/sys/power/pm_test`，按内核[官方调试说明](https://docs.kernel.org/power/basic-pm-debugging.html)分阶段测试，避免把 USB 暂时断开直接当作整机重启。应同时记录启动 ID、恢复错误及触控/网络的实际状态；写入 `/sys/power/state` 返回成功也可能伴随驱动恢复失败。
 
 已经完成进程暂停和普通设备暂停、恢复测试。深层测试曾触发重启，也曾返回但 Wi-Fi 恢复失败；`BHI offset: 0xffffffff` 与恢复后的 PCI 配置全 `FF` 表明设备不可访问，后续固件等待超时是连带结果，尚未确定供电/复位恢复的最终修正。
+
+后续完整日志确定 PCIe 和 QMP PHY 驱动都设置了 `device_set_awake_path`，但 GCC 的两个电源域未设置 `GENPD_FLAG_ACTIVE_WAKEUP`，genpd 仍关闭供电，驱动又按链路保留路径恢复。默认内核增加 [`0029-sm8750-pcie-active-wakeup.patch`](../../patches/linux/7.2.9/0029-sm8750-pcie-active-wakeup.patch)，只在实际 awake path 上保留域，不强制常开。深层设备测试、实际 `freeze` 和 `mem/deep` 均通过，RTC 约二十秒后唤醒，同一启动 ID，恢复错误计数为零；触控恢复收帧、Wi-Fi 保持 D0、蓝牙保持开启。尚未测得待机耗电。
+
+通过 `systemctl suspend` 发出的桌面请求尚未完成：网络仍响应，但 SSH 用户进程不响应。它包含 logind、桌面锁屏及 systemd 用户会话冻结，不能用直接写内核接口的结果代替。先恢复设备并读回这部分日志，再启用自动睡眠。
 
 诊断用 [`piano-pm-log.dtso`](../../linux/dts/drafts/piano-pm-log.dtso)保持现有 4 MiB 预留区不变，将 Linux console 放到后一半，避免下一轮 UEFI 的 2 MiB 日志覆盖它。该布局不进入正常发布配置。若故障发生在控制台暂停期间，还需要临时将 `/sys/module/printk/parameters/console_suspend` 设为 `N`，定位后恢复为 `Y`。
 

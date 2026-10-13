@@ -4,9 +4,15 @@ power-static=['']
 
 [org/gnome/settings-daemon/plugins/power]
 power-button-action='nothing'
+# Kernel suspend works; keep automatic requests off until the desktop's
+# user-session freeze/thaw path has also been validated.
+sleep-inactive-ac-type='nothing'
+sleep-inactive-ac-timeout=1800
+sleep-inactive-battery-type='nothing'
+sleep-inactive-battery-timeout=900
 
 [org/gnome/desktop/session]
-# Standard GNOME idle blanking; sleep remains separate until resume works.
+# Standard GNOME idle blanking precedes its idle sleep timer.
 idle-delay=uint32 300
 
 [org/gnome/desktop/screensaver]
