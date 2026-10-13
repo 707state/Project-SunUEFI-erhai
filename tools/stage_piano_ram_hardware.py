@@ -138,6 +138,7 @@ def build(output, source, rootfs=None):
     for relative in ('etc/modprobe.d/piano.conf',
                      'etc/modules-load.d/piano-rgb.conf',
                      'etc/modules-load.d/piano-bluetooth.conf',
+                     'etc/modules-load.d/piano-pen-dock.conf',
                      'usr/lib/piano/bluetooth-address.py',
                      'usr/share/piano/pen/p81c-radio.json',
                      'usr/share/piano/pen/calibration/piano-boe.ini',

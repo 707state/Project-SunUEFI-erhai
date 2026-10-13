@@ -63,6 +63,20 @@
     },
     {
       "group": "common",
+      "path": "etc/modules-load.d/piano-pen-dock.conf",
+      "type": "file",
+      "mode": "0644",
+      "uid": 0,
+      "gid": 0,
+      "sha256": "430b0f2543d78ad8111aab2a04dff2426e2fa522b0b6a48790cfbb5d26e15a6f",
+      "source": "linux/bsp/common/etc/modules-load.d/piano-pen-dock.conf",
+      "source_component": "Project SunUEFI",
+      "source_sha256": "430b0f2543d78ad8111aab2a04dff2426e2fa522b0b6a48790cfbb5d26e15a6f",
+      "source_git_mode": "100644",
+      "license": "NOASSERTION"
+    },
+    {
+      "group": "common",
       "path": "etc/piano/display.conf",
       "type": "file",
       "mode": "0644",

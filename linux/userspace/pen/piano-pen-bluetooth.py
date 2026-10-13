@@ -60,6 +60,47 @@ def profile(path):
     return data
 
 
+class LeScan:
+    """Keep BlueZ discovery running while waiting for the pen to advertise.
+
+    The pen only starts advertising after the touch controller or the magnetic
+    dock wakes it; BlueZ does not find it on its own. Discovery is idempotent
+    and is stopped on exit, so a normal paired reconnect is unaffected.
+    """
+
+    def __init__(self):
+        from gi.repository import Gio
+        self.Gio = Gio
+        self.bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        self.owned = False
+
+    def start(self):
+        if self.owned:
+            return
+        self.owned = True
+        try:
+            self.bus.call_sync(
+                'org.bluez', '/org/bluez/hci0', 'org.bluez.Adapter1',
+                'StartDiscovery', None, None,
+                self.Gio.DBusCallFlags.NONE, 5000, None)
+        except Exception:
+            # Already discovering (another client owns discovery) is fine;
+            # leaving self.owned set avoids repeated failing calls.
+            pass
+
+    def stop(self):
+        if not self.owned:
+            return
+        self.owned = False
+        try:
+            self.bus.call_sync(
+                'org.bluez', '/org/bluez/hci0', 'org.bluez.Adapter1',
+                'StopDiscovery', None, None,
+                self.Gio.DBusCallFlags.NONE, 5000, None)
+        except Exception:
+            pass
+
+
 class Pen:
     def __init__(self, address, stationary):
         from gi.repository import Gio, GLib
@@ -241,8 +282,10 @@ def main():
 
     signal.signal(signal.SIGINT, stop)
     signal.signal(signal.SIGTERM, stop)
+    scan = LeScan()
     while not stopped:
         try:
+            scan.start()
             pen = Pen(args.address, args.stationary_device)
             pen.open()
             pen.initialize(p)
@@ -280,6 +323,7 @@ def main():
             if stopped:
                 break
             time.sleep(.1)
+    scan.stop()
 
 
 if __name__ == '__main__':

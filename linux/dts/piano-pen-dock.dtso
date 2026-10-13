@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/gpio/gpio.h>
+
+/*
+ * Magnetic pen-dock Hall switch. The factory Piano DT uses Hall3/Hall4 on
+ * TLMM gpio200/gpio196 with 2 mA pull-ups and qcom,apps ownership. This is a
+ * storage/charging-dock sensor only: it reports SW_PEN_INSERTED and does not
+ * provide wireless charging or pen battery data.
+ */
+/ {
+	fragment@0 {
+		target = <&piano_tlmm_ml>;
+		__overlay__ {
+			piano_pen_dock_default: pen-dock-default-state {
+				pins = "gpio200", "gpio196";
+				function = "gpio";
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
+		};
+	};
+
+	fragment@1 {
+		target-path = "/soc";
+		__overlay__ {
+			pen-dock {
+				compatible = "xiaomi,piano-pen-dock";
+				pinctrl-names = "default";
+				pinctrl-0 = <&piano_pen_dock_default>;
+				hall-gpios = <&piano_tlmm_ml 200 GPIO_ACTIVE_LOW>,
+					     <&piano_tlmm_ml 196 GPIO_ACTIVE_LOW>;
+			};
+		};
+	};
+};

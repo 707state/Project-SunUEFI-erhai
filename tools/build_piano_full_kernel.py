@@ -47,8 +47,9 @@ FLASH_OVERRIDES={
 EARLY_CPUCP_OVERRIDES={'CONFIG_QCOM_CPUCP_MBOX':'y'}
 BLUETOOTH_OVERRIDES={'CONFIG_UHID':'m','CONFIG_HID_XIAOMI':'m',
                     'CONFIG_BT_RFCOMM':'m','CONFIG_BT_RFCOMM_TTY':'y','CONFIG_BT_BNEP':'m'}
+PEN_DOCK_OVERRIDES={'CONFIG_INPUT_XIAOMI_PIANO_PEN_DOCK':'m'}
 USERSPACE_SECURITY_OVERRIDES={'CONFIG_SECURITY_LANDLOCK':'y'}
-ALLOWED_OVERRIDES={**BLUETOOTH_OVERRIDES,**FLASH_OVERRIDES,**EARLY_CPUCP_OVERRIDES,
+ALLOWED_OVERRIDES={**BLUETOOTH_OVERRIDES,**PEN_DOCK_OVERRIDES,**FLASH_OVERRIDES,**EARLY_CPUCP_OVERRIDES,
                    **USERSPACE_SECURITY_OVERRIDES}
 
 
@@ -84,7 +85,7 @@ def command_line(fragment,public,root_policy):
 
 def module_overrides(fragment,kind='bluetooth'):
     lines=[line.strip()for line in fragment.splitlines()if line.strip()and not line.lstrip().startswith('#')]
-    expected=BLUETOOTH_OVERRIDES if kind=='bluetooth'else FLASH_OVERRIDES if kind=='flash'else EARLY_CPUCP_OVERRIDES if kind=='early-cpucp'else USERSPACE_SECURITY_OVERRIDES if kind=='userspace-security'else None
+    expected=BLUETOOTH_OVERRIDES if kind=='bluetooth'else PEN_DOCK_OVERRIDES if kind=='pen-dock'else FLASH_OVERRIDES if kind=='flash'else EARLY_CPUCP_OVERRIDES if kind=='early-cpucp'else USERSPACE_SECURITY_OVERRIDES if kind=='userspace-security'else None
     if expected is None or lines!=[key+'='+value for key,value in expected.items()]:raise ValueError('Unexpected '+kind+' configuration fragment')
     return dict(expected)
 
@@ -208,9 +209,11 @@ def main():
     verify_source(work,commit);public=work/'arch/arm64/configs/piano_rootfs.config';fragment=ROOT/'linux/configs/piano-full.config'
     root_command=command_line(fragment.read_text(),public.read_text(),args.root)
     bluetooth=ROOT/'linux/configs/piano-bluetooth.config';flash=ROOT/'linux/configs/piano-flash.config'
+    pen_dock=ROOT/'linux/configs/piano-pen-dock.config'
     early_cpucp=ROOT/'linux/configs/piano-cpucp-early.config'
     userspace_security=ROOT/'linux/configs/piano-userspace-security.config'
-    modules={**module_overrides(bluetooth.read_text()),**module_overrides(flash.read_text(),'flash'),
+    modules={**module_overrides(bluetooth.read_text()),**module_overrides(pen_dock.read_text(),'pen-dock'),
+             **module_overrides(flash.read_text(),'flash'),
              **module_overrides(early_cpucp.read_text(),'early-cpucp'),
              **module_overrides(userspace_security.read_text(),'userspace-security')}
     env,tools=toolchain();out.mkdir(parents=True,exist_ok=True);artifacts.mkdir(parents=True,exist_ok=True)
@@ -230,7 +233,7 @@ def main():
     verify_source(work,commit)
     tree=text(['git','rev-parse','HEAD^{tree}'],work)
     compiler_checkout(work,compiler,commit,tree)
-    hashes={str(path.relative_to(ROOT)):sha(path)for path in (fragment,bluetooth,flash,early_cpucp,userspace_security,Path(__file__),ROOT/'tools/build_kernel.py',ROOT/'tools/prepare_linux_modules.py')}
+    hashes={str(path.relative_to(ROOT)):sha(path)for path in (fragment,bluetooth,pen_dock,flash,early_cpucp,userspace_security,Path(__file__),ROOT/'tools/build_kernel.py',ROOT/'tools/prepare_linux_modules.py')}
     effective_text=effective_config(root_command,modules)
     effective=out/'piano-full.effective.config';effective.write_text(effective_text)
     command=['make','-C',compiler,'O='+str(out),'ARCH=arm64','LLVM=1','LLVM_IAS=1']
