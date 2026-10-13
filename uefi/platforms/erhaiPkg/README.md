@@ -19,6 +19,24 @@
 数据必须等 `tools/prepare_erhai.py` 用真实采集（`xbl_config_a.img`、原厂
 `uefi_a.img`、`live.dtb`、`dtbo_a.img`）重新生成本包后才能作为证据。
 
+## 存储栈（已编入，待实机验证）
+
+FDF 现含 dodge 的时钟/供电依赖链（ULog → IPCC → CmdDb → PwrUtils → Npa →
+Rpmh → Mailbox → Vcs → Clock → ICB，遵循 dodge 自身 APRIORI 顺序）与
+UFSDxe + DiskIo/Partition/English/FAT 通用存储栈。Stage0BootManagerLib
+会在横幅后枚举 BlockIO/SimpleFileSystem 并打印每个块设备容量与文件系统
+数量，用于实机判断 UFS 是否打通。
+
+**已知风险**：ClockDxe 会初始化 CESTA/media/DCD（字符串证据
+`qcom,disp_cesta-pakala`、`ClockDCDEnableDependencies`），可能切断继承的
+显示——黑屏不等于死机，45 秒自动重启触发即说明 DXE 仍在运行。Piano 用
+“显示时钟租约”方案延后这些初始化，erhai 产品化时同样需要。
+PMIC 依赖模块（PmicDxe/SdccDxe 等）仍排除在外。
+
+FVMAIN 占用 3081K/3150K（99.9%）：storage 栈已接近 3 MiB FD 上限，
+产品化（ProductCore/SimpleInit）前需要扩大 FD 并同步调整 BootShim
+FD_BASE/FD_SIZE 与打包布局。
+
 ## 有采集后的再生成
 
 ```sh

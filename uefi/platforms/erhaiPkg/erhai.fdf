@@ -4,6 +4,12 @@
 # Native dispatch order mirrors dodgePkg/Include/APRIORI.inc: SmemDxe -> DALSYS
 # -> HWIO -> ChipInfo. The piano (Xiaomi) order ChipInfo-first deadlocks the
 # statically-linked DALModEnv inside ChipInfoDxe (DALModEnv.c+115 !EFI_ERROR).
+# Storage bring-up: UFS via the dodge UFSDxe (BlockIO for LU0..7) plus the
+# generic Disk/Partition/FAT stack so the ESP can be enumerated. The clock and
+# rail dependencies follow dodge's own APRIORI order (ULog/IPCC/CmdDb/PwrUtils/
+# Npa/Rpmh/Mailbox/Vcs/Clock/ICB); PMIC-dependent modules are still excluded.
+# Expect possible display-clock side effects from ClockDxe (CESTA/media/DCD);
+# the 45-second auto-reboot tells DXE liveness apart from a dead screen.
 # The dodge TZ trio (ShmBridgeDxeLA / ScmDxeCompat / TzDxeLA) is deliberately
 # absent: its BOOT.MXF.2.5.1 SmcInvokeInit returns EFI_NOT_FOUND on erhai's TZ
 # firmware and hangs dispatch. Stage-0 needs no SCM. Restore TZ from erhai's
@@ -63,6 +69,16 @@ READ_STATUS = TRUE
     INF Binaries/dodge/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf
     INF Binaries/dodge/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf
     INF Binaries/dodge/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/ULogDxe/ULogDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/IPCCDxe/IPCCDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/CmdDbDxe/CmdDbDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/PwrUtilsDxe/PwrUtilsDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/NpaDxe/NpaDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/MailboxDxe/MailboxDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/VcsDxe/VcsDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/ClockDxe/ClockDxe.inf
+    INF Binaries/dodge/QcomPkg/Drivers/ICBDxe/ICBDxe.inf
     INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
     INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
     INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
@@ -70,6 +86,12 @@ READ_STATUS = TRUE
     INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
     INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
     INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+  INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
+  INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
+  INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+  INF FatPkg/EnhancedFatDxe/Fat.inf
+
   }
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
   INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -95,6 +117,16 @@ READ_STATUS = TRUE
   INF Binaries/dodge/QcomPkg/Drivers/ChipInfoDxe/ChipInfoDxe.inf
   INF Binaries/dodge/QcomPkg/Drivers/PlatformInfoDxe/PlatformInfoDxe.inf
   INF Binaries/dodge/QcomPkg/Drivers/HALIOMMUDxe/HALIOMMUDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/ULogDxe/ULogDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/IPCCDxe/IPCCDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/CmdDbDxe/CmdDbDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/PwrUtilsDxe/PwrUtilsDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/NpaDxe/NpaDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/RpmhDxe/RpmhDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/MailboxDxe/MailboxDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/VcsDxe/VcsDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/ClockDxe/ClockDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/ICBDxe/ICBDxe.inf
   INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
@@ -102,5 +134,11 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
   INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
+  INF Binaries/dodge/QcomPkg/Drivers/UFSDxe/UFSDxe.inf
+  INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
+  INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
+  INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+  INF FatPkg/EnhancedFatDxe/Fat.inf
+
 
 !include SiliciumPkg/Common.fdf.inc

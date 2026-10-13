@@ -6,6 +6,10 @@
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/DebugLib.h>
 #include <Protocol/GraphicsOutput.h>
+#include <Protocol/BlockIo.h>
+#include <Protocol/SimpleFileSystem.h>
+#include <Protocol/DevicePath.h>
+#include <Library/MemoryAllocationLib.h>
 
 STATIC EFI_EVENT mReturnToAndroidEvent;
 
@@ -33,7 +37,65 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
   __asm__ volatile ("mrs %0, CurrentEL" : "=r" (CurrentEl));
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop);
   Print (L"\r\nSunUEFI: OnePlus Pad 2 Pro / erhai / SM8750-AB\r\n");
+  {
+    EFI_STATUS SubStatus;
+    UINTN HandleCount = 0;
+    EFI_HANDLE *Handles = NULL;
+    UINTN Index;
+    UINTN BlockCount = 0;
+    UINTN FsCount = 0;
+    SubStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiBlockIoProtocolGuid,
+                                         NULL, &HandleCount, &Handles);
+    if (!EFI_ERROR (SubStatus) && Handles != NULL) {
+      for (Index = 0; Index < HandleCount; Index++) {
+        EFI_BLOCK_IO_PROTOCOL *Block = NULL;
+        if (EFI_ERROR (gBS->HandleProtocol (Handles[Index], &gEfiBlockIoProtocolGuid,
+                                            (VOID **)&Block)) || Block == NULL) {
+          continue;
+        }
+        BlockCount++;
+        if (BlockCount <= 8 && Block->Media != NULL) {
+          Print (L"BlockIO %u: %llu MiB, block %u B, removable %u%s\r\n",
+                 (UINT32)BlockCount,
+                 (unsigned long long)((Block->Media->LastBlock + 1) *
+                                      (UINT64)Block->Media->BlockSize) >> 20,
+                 Block->Media->BlockSize,
+                 Block->Media->RemovableMedia,
+                 Block->Media->ReadOnly ? L" [RO]" : L"");
+        }
+      }
+      gBS->FreePool (Handles);
+    } else {
+      Print (L"BlockIO: none found (%r)\r\n", SubStatus);
+    }
+    SubStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
+                                         NULL, &HandleCount, &Handles);
+    if (!EFI_ERROR (SubStatus) && Handles != NULL) {
+      for (Index = 0; Index < HandleCount; Index++) {
+        FsCount++;
+        if (FsCount <= 8) {
+          EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
+          EFI_FILE_PROTOCOL *Root = NULL;
+          if (!EFI_ERROR (gBS->HandleProtocol (Handles[Index],
+                                                &gEfiSimpleFileSystemProtocolGuid,
+                                                (VOID **)&Fs)) && Fs != NULL &&
+              !EFI_ERROR (Fs->OpenVolume (Fs, &Root)) && Root != NULL) {
+            Print (L"FileSystem %u opened\r\n", (UINT32)FsCount);
+            Root->Close (Root);
+          } else {
+            Print (L"FileSystem %u open failed\r\n", (UINT32)FsCount);
+          }
+        }
+      }
+      gBS->FreePool (Handles);
+    } else {
+      Print (L"SimpleFileSystem: none found (%r)\r\n", SubStatus);
+    }
+    Print (L"Storage summary: %u block devices, %u filesystems\r\n",
+           (UINT32)BlockCount, (UINT32)FsCount);
+  }
   Print (L"Stage 0 diagnostic: DXE and console reached, EL%u\r\n", (UINT32)(CurrentEl >> 2));
+  DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_STORAGE_ENUM_DONE\n"));
   Print (L"Internal storage and USB mass-storage drivers are excluded.\r\n");
   Print (L"Linux and Windows PE boot are not implemented in this image.\r\n");
   if (!EFI_ERROR (Status) && Gop != NULL && Gop->Mode != NULL && Gop->Mode->Info != NULL) {
