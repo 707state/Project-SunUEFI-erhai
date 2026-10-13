@@ -3,9 +3,10 @@
 """Piano GNOME power key and real SW_LID, using the existing user service.
 
 Adapted from debian-piano 25babfe3ff5d8ddee98b1e0ea88152d69a0c01b1.
-Short press/closed cover blank only the backlight; opening/restoring wakes it.
-Long press opens the standard GNOME power menu. Lock/suspend are not invoked:
-the grabbed power input still needs integration with GNOME's screen wake path.
+Short press/closed cover lock the session and power down the display. The
+compositor also receives the physical key, so opening the cover or pressing
+power wakes the display to the lock screen. Long press opens the standard
+GNOME power menu. Input is observed without grabbing it.
 """
 import fcntl
 import glob
@@ -22,7 +23,6 @@ KEY_POWER = 116
 SW_LID = 0
 EV_KEY, EV_SW, EV_SYN, SYN_DROPPED = 1, 5, 0, 3
 LONG_PRESS = 0.8
-EVIOCGRAB = 0x40044590
 # _IOR('E', 0x1b, an eight-byte bitmap): read the current switch state.
 EVIOCGSW = (2 << 30) | (8 << 16) | (ord('E') << 8) | 0x1b
 EVENT = struct.Struct('llHHi')
@@ -65,10 +65,26 @@ def call(args, operation):
 
 
 def set_brightness(backlight, value):
+    """Fallback when the compositor cannot drive DPMS."""
     return call(['gdbus', 'call', '--system', '--dest', 'org.freedesktop.login1',
                  '--object-path', '/org/freedesktop/login1/session/auto',
                  '--method', 'org.freedesktop.login1.Session.SetBrightness',
                  'backlight', backlight, str(value)], 'backlight request')
+
+
+def display_power(off):
+    return call(['gdbus', 'call', '--session',
+                 '--dest', 'org.gnome.Mutter.DisplayConfig',
+                 '--object-path', '/org/gnome/Mutter/DisplayConfig',
+                 '--method', 'org.freedesktop.DBus.Properties.Set',
+                 'org.gnome.Mutter.DisplayConfig', 'PowerSaveMode',
+                 '<int32 3>' if off else '<int32 0>'], 'display power request')
+
+
+def lock_session():
+    return call(['gdbus', 'call', '--session', '--dest', 'org.gnome.ScreenSaver',
+                 '--object-path', '/org/gnome/ScreenSaver',
+                 '--method', 'org.gnome.ScreenSaver.Lock'], 'session lock')
 
 
 def power_dialog():
@@ -86,9 +102,17 @@ def lid_closed(fd):
 class Screen:
     def __init__(self):
         self.saved = None
+        self.dpms = False
         self.cover_closed = None
 
     def blank(self):
+        # Lock first, then power the panel down through the compositor. Fall
+        # back to the backlight only if Mutter cannot drive DPMS.
+        if not self.dpms:
+            lock_session()
+            self.dpms = display_power(True)
+        if self.dpms:
+            return
         backlight = find_backlight()
         if backlight is None or self.saved is not None:
             return
@@ -97,13 +121,16 @@ class Screen:
             self.saved = (backlight, saved)
 
     def wake(self):
+        if self.dpms:
+            self.dpms = not display_power(False)
+            return
         if self.saved is not None:
             backlight, value = self.saved
             if set_brightness(backlight, value):
                 self.saved = None
 
     def toggle(self):
-        if self.saved is None:
+        if not self.dpms and self.saved is None:
             self.blank()
         else:
             self.wake()
@@ -135,9 +162,7 @@ def main():
                     continue
                 fd = os.open(path, os.O_RDONLY | os.O_CLOEXEC)
                 try:
-                    if name == KEY_NAME:
-                        fcntl.ioctl(fd, EVIOCGRAB, 1)
-                    else:
+                    if name == LID_NAME:
                         # SW_LID reports state, not just transitions. A cover
                         # already closed at service startup must also blank.
                         screen.lid(lid_closed(fd))
@@ -187,7 +212,7 @@ def main():
                             screen.toggle()
     finally:
         for fd in devices:
-            os.close(fd)  # Closing only the power FD releases EVIOCGRAB.
+            os.close(fd)
 
 
 if __name__ == '__main__':
