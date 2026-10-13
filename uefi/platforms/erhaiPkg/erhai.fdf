@@ -190,6 +190,14 @@ READ_STATUS = TRUE
     SECTION RAW = Binaries/erhai/cfg/BDS_Menu.cfg
     SECTION UI = "BDS_Menu.cfg"
   }
+  # Vendor SLT/panel database FV (decompressed from the uefi_a outer-FV file
+  # D14C51ED-...): CalibrationDxe looks this FV up by its file GUID and reads
+  # SLT platform data; DisplayDxe-era panels (incl. Panel_XN242 XML) live here.
+  FILE FV_IMAGE = D14C51ED-4F4D-2F2D-EAE4-77914692D046 {
+    SECTION RAW = Binaries/erhai/slt/panel-fv.bin
+    SECTION UI = "SLT"
+  }
+
   # uefiplat.cfg: the OUTER-FV text config (GUID DDE58710, 501 B) that
   # CalibrationDxe looks up by name; the FVMAIN FC510EE7 binary blob is a
   # different (encrypted SLT?) artifact and is NOT what the name search wants.
