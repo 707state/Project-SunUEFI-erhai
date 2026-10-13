@@ -5,7 +5,7 @@
 Adapted from debian-piano 25babfe3ff5d8ddee98b1e0ea88152d69a0c01b1.
 Short press/closed cover blank only the backlight; opening/restoring wakes it.
 Long press opens the standard GNOME power menu. Lock/suspend are not invoked:
-GNOME Lock currently drives DPMS OFF, whose DSI recovery is still unverified.
+the grabbed power input still needs integration with GNOME's screen wake path.
 """
 import fcntl
 import glob
