@@ -34,6 +34,20 @@
 
 !include PakalaPkg/PakalaPkg.dsc.inc
 
+# RELEASE-DIAGNOSTIC overrides: keep the vendor drivers' RELEASE semantics (asserts
+# compiled out — the vendor uefi_a is RELEASE_CLANG160LINUX and its drivers rely on
+# non-fatal error paths) while RESTORING console output for bring-up: framebuffer
+# serial + BaseDebugLibSerialPort with all print levels, PropertyMask 0 (no asserts,
+# no deadloop), memory retained (no DEBUG ClearMemory poisoning).
+[PcdsFixedAtBuild]
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPropertyMask|0x00
+  gEfiMdePkgTokenSpaceGuid.PcdDebugClearMemoryValue|0x00
+  gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8007EE0F
+
+[LibraryClasses]
+  SerialPortLib|SiliciumPkg/Library/FrameBufferSerialPortLib/FrameBufferSerialPortLib.inf
+  DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
+
 [PcdsFixedAtBuild]
   #
   # DDR Memory
