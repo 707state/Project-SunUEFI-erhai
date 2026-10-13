@@ -190,8 +190,12 @@ READ_STATUS = TRUE
     SECTION RAW = Binaries/erhai/cfg/BDS_Menu.cfg
     SECTION UI = "BDS_Menu.cfg"
   }
-  # uefiplat.cfg (GUID FC510EE7-...) is NOT included: that GUID takes a special
-  # path in GenFv and breaks the build; the two files drivers actually look up
-  # (SecParti.cfg by UFSDxe, BDS_Menu.cfg by QcomBds) are present.
+  # uefiplat.cfg: the OUTER-FV text config (GUID DDE58710, 501 B) that
+  # CalibrationDxe looks up by name; the FVMAIN FC510EE7 binary blob is a
+  # different (encrypted SLT?) artifact and is NOT what the name search wants.
+  FILE FREEFORM = DDE58710-41CD-4306-DBFB-3FA90BB1D2DD {
+    SECTION RAW = Binaries/erhai/cfg/uefiplat.cfg
+    SECTION UI = "uefiplat.cfg"
+  }
 
 !include SiliciumPkg/Common.fdf.inc
