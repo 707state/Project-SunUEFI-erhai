@@ -72,6 +72,9 @@ READ_STATUS = TRUE
     INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
     INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
+  INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
+  INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/SmemDxe/SmemDxe.inf
   INF Binaries/erhai/DALSys/DALSys.inf
   INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
@@ -88,11 +91,11 @@ READ_STATUS = TRUE
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
-  INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
-  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
-  INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
+    INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+    INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
+    INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
     INF Binaries/erhai/SmemDxe/SmemDxe.inf
     INF Binaries/erhai/DALSys/DALSys.inf
     INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
@@ -109,9 +112,6 @@ READ_STATUS = TRUE
     INF Binaries/erhai/VcsDxe/VcsDxe.inf
     INF Binaries/erhai/ClockDxe/ClockDxe.inf
     INF Binaries/erhai/ICBDxe/ICBDxe.inf
-    INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
-    INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
-    INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
     INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
     INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
@@ -147,6 +147,9 @@ READ_STATUS = TRUE
   INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
+  INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
+  INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/SmemDxe/SmemDxe.inf
   INF Binaries/erhai/DALSys/DALSys.inf
   INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
@@ -163,9 +166,6 @@ READ_STATUS = TRUE
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
-  INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
-  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
-  INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/UFSDxe/UFSDxe.inf
   INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
