@@ -180,4 +180,18 @@ READ_STATUS = TRUE
   INF FatPkg/EnhancedFatDxe/Fat.inf
 
 
+  # Vendor freeform config files the native drivers look up in the FV
+  # (UFSDxe: "Failed to load SecParti.cfg"; QcomBds wants BDS_Menu.cfg).
+  FILE FREEFORM = A1E235DE-E825-4591-9623-C43175811826 {
+    SECTION RAW = Binaries/erhai/cfg/SecParti.cfg
+    SECTION UI = "SecParti.cfg"
+  }
+  FILE FREEFORM = A91D838E-A5FA-4138-825D-455E2303079E {
+    SECTION RAW = Binaries/erhai/cfg/BDS_Menu.cfg
+    SECTION UI = "BDS_Menu.cfg"
+  }
+  # uefiplat.cfg (GUID FC510EE7-...) is NOT included: that GUID takes a special
+  # path in GenFv and breaks the build; the two files drivers actually look up
+  # (SecParti.cfg by UFSDxe, BDS_Menu.cfg by QcomBds) are present.
+
 !include SiliciumPkg/Common.fdf.inc

@@ -62,6 +62,11 @@ for inf in sorted(inf_src.glob('*.inf')):
     depex = src / f'{name}.depex'
     if depex.is_file():
         shutil.copy2(depex, dst / f'{name}.depex')
+cfg_src = orig / 'vendor/erhai/cfg-staging'
+if cfg_src.is_dir():
+    (out / 'cfg').mkdir(parents=True, exist_ok=True)
+    for cfg in sorted(cfg_src.iterdir()):
+        shutil.copy2(cfg, out / 'cfg' / cfg.name)
 PY_BIN
   test -f "$sun_ws/Platforms/OnePlus/erhaiPkg/erhai.dsc"
   test -f "$sun_ws/Binaries/erhai/ClockDxe/ClockDxe.inf"

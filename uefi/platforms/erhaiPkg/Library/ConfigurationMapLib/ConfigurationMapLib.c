@@ -1,39 +1,34 @@
-// SM8750-AB configuration map taken from the pinned Mu-Silicium dodgePkg.
-// Same-SoC bring-up stand-in; regenerate from an erhai capture when available.
+// Generated from erhai native UEFI DT configuration (xbl_config_a capture).
 #include <Library/ConfigurationMapLib.h>
-
-STATIC
-EFI_CONFIGURATION_ENTRY_DESCRIPTOR
-gConfigurationDescriptor[] = {
-  // Configuration Map
+STATIC EFI_CONFIGURATION_ENTRY_DESCRIPTOR gConfigurationDescriptor[] = {
   {"EnableShell", 0x1},
   {"SecPagePoolCount", 0x1800},
   {"EnableSecurityHoleForSplashPartition", 0x1},
   {"SharedIMEMBaseAddr", 0x14680000},
-  {"DloadCookieAddr", 0x1fd9000},
+  {"DloadCookieAddr", 0x1FD9000},
   {"DloadCookieValue", 0x10},
   {"SkipDBISetup", 0x0},
-  {"PilSubsysDbgCookieAddr", 0x146806dc},
+  {"PilSubsysDbgCookieAddr", 0x146806DC},
   {"PilSubsysDbgCookieVal", 0x53444247},
   {"NumCpus", 0x8},
   {"NumActiveCores", 0x8},
   {"MaxLogFileSize", 0x400000},
-  {"UefiMemUseThreshold", 0xe1},
+  {"UefiMemUseThreshold", 0xE1},
   {"USBHS1_Config", 0x0},
   {"UsbFnIoRevNum", 0x10001},
   {"PwrBtnShutdownFlag", 0x0},
-  {"Sdc1GpioConfigOn", 0x1e92},
-  {"Sdc2GpioConfigOn", 0x1e92},
-  {"Sdc1GpioConfigOff", 0xa00},
-  {"Sdc2GpioConfigOff", 0xa00},
+  {"Sdc1GpioConfigOn", 0x1E92},
+  {"Sdc2GpioConfigOn", 0x1E92},
+  {"Sdc1GpioConfigOff", 0xA00},
+  {"Sdc2GpioConfigOff", 0xA00},
   {"EnableSDHCSwitch", 0x1},
   {"EnableUfsIOC", 0x1},
   {"UfsSmmuConfigForOtherBootDev", 0x1},
-  {"SecurityFlag", 0xc4},
+  {"SecurityFlag", 0xC4},
   {"EnableLogFsSyncInRetail", 0x0},
   {"DetectRetailUserAttentionHotkey", 0x0},
   {"DetectRetailUserAttentionHotkeyCode", 0x17},
-  {"ShmBridgememSize", 0xa00000},
+  {"ShmBridgememSize", 0xA00000},
   {"MaxCoreCount", 0x8},
   {"EnableMultiThreading", 0x1},
   {"EarlyInitCoreCnt", 0x2},
@@ -46,15 +41,8 @@ gConfigurationDescriptor[] = {
   {"EnableMultiCoreFvDecompression", 0x1},
   {"EnableVariablePolicyEngine", 0x0},
   {"EnableACPIFallback", 0x0},
-  {"DRAM_CLK_PERIOD_ADDR", 0x240ba050}
+  {"DRAM_CLK_PERIOD_ADDR", 0x240BA050}
 };
-
-VOID
-GetConfigurationMap (
-  OUT EFI_CONFIGURATION_ENTRY_DESCRIPTOR **ConfigurationDescriptor,
-  OUT UINT8                               *ConfigurationDescriptorCount)
-{
-  // Pass Data
-  *ConfigurationDescriptor      = gConfigurationDescriptor;
-  *ConfigurationDescriptorCount = ARRAY_SIZE (gConfigurationDescriptor);
+VOID GetConfigurationMap (OUT EFI_CONFIGURATION_ENTRY_DESCRIPTOR **Map, OUT UINT8 *Count) {
+  *Map = gConfigurationDescriptor; *Count = ARRAY_SIZE (gConfigurationDescriptor);
 }
