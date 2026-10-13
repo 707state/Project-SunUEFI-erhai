@@ -51,7 +51,7 @@ def stock_kernel(data):
                     'kernel_sha256': digest(kernel)}
 
 
-def build_selector(output):
+def build_selector(output, extra_flags=()):
     toolroot = Path(os.environ.get('SUNUEFI_TOOLCHAIN_ROOT', ROOT / 'build/host-tools/usr'))
     cc, ld, objcopy, nm = (toolroot / 'bin' / name for name in ('clang', 'ld.lld', 'llvm-objcopy', 'llvm-nm'))
     environment = {**os.environ, 'LD_LIBRARY_PATH': str(toolroot / 'lib') +
@@ -65,7 +65,7 @@ def build_selector(output):
              '-fno-unwind-tables', '-fno-asynchronous-unwind-tables', '-mgeneral-regs-only', '-mstrict-align', '-fshort-wchar',
              '-Wall', '-Wextra', '-Werror', '-Wno-misleading-indentation', '-DPIANO_EARLY_SPLASH', '-DPIANO_EARLY_CHOOSER',
              '-DPIANO_BOOTSELECT_TRACE_ID="'+trace_id+'"',
-             '-I' + str(inc), '-I' + str(inc / 'AArch64')]
+             '-I' + str(inc), '-I' + str(inc / 'AArch64'), *extra_flags]
     for index, source in enumerate(sources):
         obj = output / f'entry-{index}.o'
         subprocess.run([str(cc), *flags, '-c', str(source), '-o', str(obj)], check=True, env=environment)

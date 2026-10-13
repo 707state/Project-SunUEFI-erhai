@@ -7,10 +7,18 @@ from pathlib import Path
 import uuid
 from firmware_workspace import active_root, validate_sources
 
-NAMES={'stage0':'piano','probe':'pianoProbe','linux':'pianoLinux','gui':'pianoGui','product':'pianoProduct'}
+NAMES={'stage0':'piano','probe':'pianoProbe','linux':'pianoLinux','gui':'pianoGui','product':'pianoProduct','erhai':'erhai'}
+# erhai lives in the upstream OnePlus platform directory; every other profile
+# is assembled under Platforms/Xiaomi.
+PLATFORM_PARENT={'erhai':'OnePlus'}
+PARENT_DEFAULT='Xiaomi'
 
 def output_names(profile):
-    return ('PianoUEFI-product.fd','BootShim.bin') if profile=='product' else ('piano-stage0.fd','BootShim.bin')
+    if profile=='product':
+        return ('PianoUEFI-product.fd','BootShim.bin')
+    if profile=='erhai':
+        return ('erhai-stage0.fd','BootShim.bin')
+    return ('piano-stage0.fd','BootShim.bin')
 
 
 def sha(path):
@@ -21,17 +29,27 @@ def inputs(root,profile):
     original_root=root
     if profile=='product':root=active_root(root)
     ws=root/'upstream/Mu-Silicium'
-    platform=ws/'Platforms/Xiaomi'/f'{NAMES[profile]}Pkg'
+    platform=ws/'Platforms'/PLATFORM_PARENT.get(profile,PARENT_DEFAULT)/f'{NAMES[profile]}Pkg'
     if not platform.is_dir():
         raise ValueError('Prepared platform is missing')
     files=set(p for p in platform.rglob('*') if p.is_file() and '__pycache__' not in p.parts)
-    binaries=ws/'Binaries/piano'
+    binaries=ws/'Binaries/dodge' if profile=='erhai' else ws/'Binaries/piano'
     if binaries.exists():
         files.update(p for p in binaries.rglob('*') if p.is_file())
     shim=ws/'BootShim' if profile=='stage0' else root/'uefi/handoff/bootshim'
-    for p in (shim/'BootShim.S',shim/'Makefile',ws/'Resources/DTBs/piano.dtb',
-              root/'tools/build_stage0.sh',root/'tools/build_integrity.py'):
+    for p in (shim/'BootShim.S',shim/'Makefile',root/'tools/build_stage0.sh',root/'tools/build_integrity.py'):
         if p.is_file():files.add(p)
+    if profile=='erhai':
+        # The tracked erhaiPkg source tree is copied into the workspace
+        # wholesale by build_stage0.sh, so both copies must hash identically.
+        files.update(p for p in (root/'uefi/platforms/erhaiPkg').rglob('*') if p.is_file())
+    if profile=='erhai':
+        # Refuse to hash the original sources while a stale workspace copy was
+        # what actually fed the compiler (the 3360-not-3392 boot taught this).
+        validate_sources(original_root, [str(p.relative_to(root)) for p in files])
+    else:
+        board_dtb=ws/'Resources/DTBs/piano.dtb'
+        if board_dtb.is_file():files.add(board_dtb)
     if profile=='product':
         import piano_vendor_inputs as vendor_inputs
         vendor_record=vendor_inputs.record(root)

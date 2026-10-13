@@ -11,3 +11,7 @@ __pycache__/
 *.pyc
 uefi/handoff/bootshim/BootShim.bin
 uefi/handoff/bootshim/BootShim.elf
+# Local stock BOOT backups (device captures, 96 MiB each)
+boot_b.img
+boot_a.img
+*.boot.img

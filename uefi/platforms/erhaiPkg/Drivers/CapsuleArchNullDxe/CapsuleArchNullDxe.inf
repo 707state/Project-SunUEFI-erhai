@@ -1,0 +1,19 @@
+[Defines]
+  INF_VERSION = 0x00010005
+  BASE_NAME = ErhaiCapsuleArchNullDxe
+  FILE_GUID = 1747AD4F-3EB8-5D84-B7B7-6854AE27BD1E
+  MODULE_TYPE = DXE_RUNTIME_DRIVER
+  VERSION_STRING = 0.1
+  ENTRY_POINT = CapsuleArchNullEntry
+[Sources]
+  CapsuleArchNullDxe.c
+[Packages]
+  MdePkg/MdePkg.dec
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+[Protocols]
+  gEfiCapsuleArchProtocolGuid
+[Depex]
+  TRUE

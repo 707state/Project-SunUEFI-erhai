@@ -11,6 +11,7 @@ case "$sun_profile" in
   linux) sun_name=pianoLinux; sun_bootshim="$sun_root/uefi/handoff/bootshim" ;;
   gui) sun_name=pianoGui; sun_bootshim="$sun_root/uefi/handoff/bootshim" ;;
   product) sun_name=pianoProduct; sun_bootshim="$sun_root/uefi/handoff/bootshim" ;;
+  erhai) sun_name=erhai; sun_bootshim="$sun_root/uefi/handoff/bootshim" ;;
   *) printf 'Unknown build profile\n' >&2; exit 1 ;;
 esac
 sun_fd_name=piano-stage0.fd
@@ -18,6 +19,10 @@ sun_buildid=SunUEFI-piano-stage0
 if [[ "$sun_profile" == product ]]; then
   sun_fd_name=PianoUEFI-product.fd
   sun_buildid=SunUEFI-piano-product
+fi
+if [[ "$sun_profile" == erhai ]]; then
+  sun_fd_name=erhai-stage0.fd
+  sun_buildid=SunUEFI-erhai-stage0
 fi
 rm -f "$sun_root/artifacts/$sun_profile/build-ok.json"
 export PATH="$sun_root/.venv/bin:$sun_tools/bin:$PATH"
@@ -28,8 +33,23 @@ export NASM_PREFIX="$sun_tools/bin/"
 export PYTHON_COMMAND="$sun_root/.venv/bin/python"
 export WORKSPACE="$sun_ws"
 export EDK_TOOLS_PATH="$sun_ws/Mu_Basecore/BaseTools"
-export PACKAGES_PATH="$sun_ws/Platforms/Xiaomi:$sun_ws/Common/Mu:$sun_ws/Common/Mu_OEM_Sample:$sun_ws/Mu_Basecore:$sun_ws/Silicon/Qualcomm:$sun_ws/Silicon/Silicium:$sun_ws/Silicium-ACPI:$sun_ws/Silicium-ACPI/Silicon/Qualcomm"
-test -f "$sun_ws/Platforms/Xiaomi/${sun_name}Pkg/${sun_name}.dsc"
+export PACKAGES_PATH="$sun_ws/Platforms/Xiaomi:$sun_ws/Platforms/OnePlus:$sun_ws/Common/Mu:$sun_ws/Common/Mu_OEM_Sample:$sun_ws/Mu_Basecore:$sun_ws/Silicon/Qualcomm:$sun_ws/Silicon/Silicium:$sun_ws/Silicium-ACPI:$sun_ws/Silicium-ACPI/Silicon/Qualcomm"
+if [[ "$sun_profile" == erhai ]]; then
+  # Stage the tracked erhai snapshot into the disposable workspace checkout.
+  # Always read the ORIGINAL repo when running from the firmware workspace, so
+  # source edits reach the build even before the workspace copy is refreshed.
+  sun_orig="$sun_root"
+  if [[ -f "$sun_root/.firmware-workspace.json" ]]; then
+    sun_orig="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['original_root'])" \
+      "$sun_root/.firmware-workspace.json")"
+  fi
+  rm -rf "$sun_ws/Platforms/OnePlus/erhaiPkg"
+  cp -R "$sun_orig/uefi/platforms/erhaiPkg" "$sun_ws/Platforms/OnePlus/erhaiPkg"
+  find "$sun_ws/Platforms/OnePlus/erhaiPkg" -name .DS_Store -delete
+  test -f "$sun_ws/Platforms/OnePlus/erhaiPkg/erhai.dsc"
+else
+  test -f "$sun_ws/Platforms/Xiaomi/${sun_name}Pkg/${sun_name}.dsc"
+fi
 test -x "$sun_tools/bin/lld-link"
 cd "$sun_ws"
 
@@ -65,7 +85,7 @@ export PYTHONPATH="$EDK_TOOLS_PATH/Source/Python${PYTHONPATH:+:$PYTHONPATH}"
   -D BUILDID_STRING="$sun_buildid" \
   -y "$sun_root/build/logs/${sun_name}-build-report.txt"
 make -C "$sun_bootshim" REQUIRES_KERNEL_HEADER=1 FD_BASE=0xA7100000 FD_SIZE=0x300000 \
-  OBJCOPY="$sun_tools/bin/aarch64-linux-gnu-objcopy"
+  OBJCOPY="${SUNUEFI_OBJCOPY:-$sun_tools/bin/aarch64-linux-gnu-objcopy}"
 mkdir -p "$sun_root/artifacts/$sun_profile"
 cp "Build/${sun_name}Pkg/DEBUG_CLANGPDB/FV/SILICIUM_UEFI.fd" "$sun_root/artifacts/$sun_profile/$sun_fd_name"
 cp "$sun_bootshim/BootShim.bin" "$sun_root/artifacts/$sun_profile/BootShim.bin"

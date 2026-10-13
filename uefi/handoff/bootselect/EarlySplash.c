@@ -20,9 +20,18 @@ void *memcpy(void *Target,const void *Source,unsigned long Bytes) {
   return Target;
 }
 
+// Panel geometry defaults to piano (Xiaomi Pad 8 Pro). Other boards pass
+// -DFRAME_WIDTH/HEIGHT at selector build time (see build_selector callers);
+// the base is the shared SM8750 Display_Reserved region.
+#ifndef FRAME_BASE
 #define FRAME_BASE 0xFC800000ULL
+#endif
+#ifndef FRAME_WIDTH
 #define FRAME_WIDTH 3200U
+#endif
+#ifndef FRAME_HEIGHT
 #define FRAME_HEIGHT 2136U
+#endif
 
 STATIC BOOLEAN EFIAPI Alive(VOID) {return TRUE;}
 STATIC EFI_STATUS EFIAPI Fill(EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop,EFI_GRAPHICS_OUTPUT_BLT_PIXEL *Pixel,
