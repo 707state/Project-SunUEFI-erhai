@@ -85,9 +85,6 @@ READ_STATUS = TRUE
   INF Binaries/erhai/NpaDxe/NpaDxe.inf
   INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
   INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
-  INF Binaries/erhai/FvDxe/FvDxe.inf
-  INF Binaries/erhai/PILDxe/PILDxe.inf
-  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
@@ -109,11 +106,6 @@ READ_STATUS = TRUE
     INF Binaries/erhai/NpaDxe/NpaDxe.inf
     INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
     INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
-    INF Binaries/erhai/FvDxe/FvDxe.inf
-    INF Binaries/erhai/PILDxe/PILDxe.inf
-    INF Binaries/erhai/FvDxe/FvDxe.inf
-  INF Binaries/erhai/PILDxe/PILDxe.inf
-  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
     INF Binaries/erhai/VcsDxe/VcsDxe.inf
     INF Binaries/erhai/ClockDxe/ClockDxe.inf
     INF Binaries/erhai/ICBDxe/ICBDxe.inf
@@ -132,6 +124,9 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   INF FatPkg/EnhancedFatDxe/Fat.inf
+  INF Binaries/erhai/FvDxe/FvDxe.inf
+  INF Binaries/erhai/PILDxe/PILDxe.inf
+  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
 
   }
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
@@ -165,9 +160,6 @@ READ_STATUS = TRUE
   INF Binaries/erhai/NpaDxe/NpaDxe.inf
   INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
   INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
-  INF Binaries/erhai/FvDxe/FvDxe.inf
-  INF Binaries/erhai/PILDxe/PILDxe.inf
-  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
@@ -186,6 +178,9 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
   INF FatPkg/EnhancedFatDxe/Fat.inf
+  INF Binaries/erhai/FvDxe/FvDxe.inf
+  INF Binaries/erhai/PILDxe/PILDxe.inf
+  INF Binaries/erhai/CalibrationDxe/CalibrationDxe.inf
 
 
   # Vendor freeform config files the native drivers look up in the FV
