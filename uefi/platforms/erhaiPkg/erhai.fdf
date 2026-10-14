@@ -73,6 +73,7 @@ READ_STATUS = TRUE
     INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
   INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/SmemDxe/SmemDxe.inf
@@ -94,6 +95,7 @@ READ_STATUS = TRUE
   INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
     INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+    INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
     INF Binaries/erhai/PILDxe/PILDxe.inf
     INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
     INF Binaries/erhai/SmemDxe/SmemDxe.inf
@@ -149,6 +151,7 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
   INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
   INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
+  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
   INF Binaries/erhai/PILDxe/PILDxe.inf
   INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
   INF Binaries/erhai/SmemDxe/SmemDxe.inf
