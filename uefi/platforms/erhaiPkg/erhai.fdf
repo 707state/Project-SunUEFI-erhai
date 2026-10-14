@@ -71,31 +71,6 @@ READ_STATUS = TRUE
     INF EmbeddedPkg/EmbeddedMonotonicCounter/EmbeddedMonotonicCounter.inf
     INF EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf
     INF MdeModulePkg/Universal/DevicePathDxe/DevicePathDxe.inf
-  INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
-  INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
-  INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
-  INF Binaries/erhai/TzDxeLA/TzDxeLA.inf
-  INF Binaries/erhai/SmemDxe/SmemDxe.inf
-  INF Binaries/erhai/DALSys/DALSys.inf
-  INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
-  INF Binaries/erhai/ChipInfo/ChipInfo.inf
-  INF Binaries/erhai/PlatformInfoDxeDriver/PlatformInfoDxeDriver.inf
-  INF Binaries/erhai/HALIOMMU/HALIOMMU.inf
-  INF Binaries/erhai/ULogDxe/ULogDxe.inf
-  INF Binaries/erhai/CmdDbDxe/CmdDbDxe.inf
-  INF Binaries/erhai/PwrUtilsDxe/PwrUtilsDxe.inf
-  INF Binaries/erhai/RpmhDxe/RpmhDxe.inf
-  INF Binaries/erhai/NpaDxe/NpaDxe.inf
-  INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
-  INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
-  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
-  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
-  INF Binaries/erhai/VcsDxe/VcsDxe.inf
-  INF Binaries/erhai/ClockDxe/ClockDxe.inf
-  INF erhaiPkg/Drivers/ErhaiUfsProbeDxe/ErhaiUfsProbe.inf
-  INF Binaries/erhai/ICBDxe/ICBDxe.inf
     INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
     INF Binaries/erhai/ShmBridgeDxeLA/ShmBridgeDxeLA.inf
     INF Binaries/erhai/ScmDxeCompat/ScmDxeCompat.inf
@@ -113,24 +88,22 @@ READ_STATUS = TRUE
     INF Binaries/erhai/NpaDxe/NpaDxe.inf
     INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
     INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
-    INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-    INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
-    INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-    INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
     INF Binaries/erhai/VcsDxe/VcsDxe.inf
     INF Binaries/erhai/ClockDxe/ClockDxe.inf
     INF erhaiPkg/Drivers/ErhaiUfsProbeDxe/ErhaiUfsProbe.inf
     INF Binaries/erhai/ICBDxe/ICBDxe.inf
+    INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
     INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
     INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
-    INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
     INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
+    INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
+    INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
+    INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
+    INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+    INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+    INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+    INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
     INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
-  INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
-  INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
-  INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
-  INF FatPkg/EnhancedFatDxe/Fat.inf
-
   }
   INF MdeModulePkg/Core/Dxe/DxeMain.inf
   INF MdeModulePkg/Universal/PCD/Dxe/Pcd.inf
@@ -170,15 +143,18 @@ READ_STATUS = TRUE
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
   INF erhaiPkg/Drivers/ErhaiUfsProbeDxe/ErhaiUfsProbe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
+  INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
   INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
-  INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
   INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
-  INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
   INF MdeModulePkg/Universal/Disk/UnicodeCollation/EnglishDxe/EnglishDxe.inf
-  INF FatPkg/EnhancedFatDxe/Fat.inf
+  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
+  INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
 
 
   # Vendor freeform config files the native drivers look up in the FV
