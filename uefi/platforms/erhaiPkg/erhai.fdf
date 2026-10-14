@@ -95,6 +95,8 @@ READ_STATUS = TRUE
   INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
+  INF Binaries/erhai/SPMI/SPMI.inf
+  INF Binaries/erhai/PmicDxe/PmicDxe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
   INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF Binaries/erhai/EnvDxeEnhanced/EnvDxeEnhanced.inf
@@ -121,6 +123,8 @@ READ_STATUS = TRUE
     INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
     INF Binaries/erhai/VcsDxe/VcsDxe.inf
     INF Binaries/erhai/ClockDxe/ClockDxe.inf
+    INF Binaries/erhai/SPMI/SPMI.inf
+    INF Binaries/erhai/PmicDxe/PmicDxe.inf
     INF Binaries/erhai/ICBDxe/ICBDxe.inf
     INF Binaries/erhai/UFSDxe/UFSDxe.inf
     INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
@@ -173,6 +177,8 @@ READ_STATUS = TRUE
   INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
+  INF Binaries/erhai/SPMI/SPMI.inf
+  INF Binaries/erhai/PmicDxe/PmicDxe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
   INF Binaries/erhai/UFSDxe/UFSDxe.inf
   INF MdeModulePkg/Universal/PrintDxe/PrintDxe.inf
