@@ -14,7 +14,9 @@
 
 后续完整日志确定 PCIe 和 QMP PHY 驱动都设置了 `device_set_awake_path`，但 GCC 的两个电源域未设置 `GENPD_FLAG_ACTIVE_WAKEUP`，genpd 仍关闭供电，驱动又按链路保留路径恢复。默认内核增加 [`0029-sm8750-pcie-active-wakeup.patch`](../../patches/linux/7.2.9/0029-sm8750-pcie-active-wakeup.patch)，只在实际 awake path 上保留域，不强制常开。深层设备测试、实际 `freeze` 和 `mem/deep` 均通过，RTC 约二十秒后唤醒，同一启动 ID，恢复错误计数为零；触控恢复收帧、Wi-Fi 保持 D0、蓝牙保持开启。尚未测得待机耗电。
 
-通过 `systemctl suspend` 发出的桌面请求尚未完成：网络仍响应，但 SSH 用户进程不响应。它包含 logind、桌面锁屏及 systemd 用户会话冻结，不能用直接写内核接口的结果代替。先恢复设备并读回这部分日志，再启用自动睡眠。
+带 RTC 定时唤醒的 `systemctl suspend` 已恢复，电源键也已实际唤醒并点亮屏幕。随后完整日志发现 ADSP 的 `qsh_process` 在恢复后报出 FastRPC listener 断言，ADSP 重启过程中又触发 `q6apm_is_adsp_ready` 的内核 Oops，第二次睡眠因工作队列无法冻结而失败。因此自动睡眠仍保持关闭。
+
+原厂 `qcom,smp2p-sleepstate` 节点在 Linux 中此前未绑定，已增加原厂协议对应的睡眠通知候选：在睡眠准备时清除 AP-awake 第 12 位，恢复后置回。缺少通知与 FastRPC 断言的关系尚待实机确认；不能根据节点绑定或编译成功宣称解决。重启停在 `Rebooting` 的照片也确认旧内核未完成复位，强制重启后才开始运行新内核。
 
 诊断用 [`piano-pm-log.dtso`](../../linux/dts/drafts/piano-pm-log.dtso)保持现有 4 MiB 预留区不变，将 Linux console 放到后一半，避免下一轮 UEFI 的 2 MiB 日志覆盖它。该布局不进入正常发布配置。若故障发生在控制台暂停期间，还需要临时将 `/sys/module/printk/parameters/console_suspend` 设为 `N`，定位后恢复为 `Y`。
 

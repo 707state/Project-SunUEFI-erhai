@@ -41,7 +41,7 @@ TARGETS[DEFAULT_TARGET] = {
     **TARGETS['kernel69'],
     'series_target': 'kernel69',
     'patch_tree': TARGETS['kernel69']['target_tree'],
-    'target_tree': 'bb0d5efe7ed61258f91070a07670edfd1cad6603',
+    'target_tree': 'd0544e8f6a22fd7de836449581b4ad6c64ebb10c',
     'stable_commit': '5fce161649b4d779d1b76d9fcd52dc77779774b8',
     'stable_tree': 'c278d1443495d2a1a07fff2bcfb286b5c35baaea',
     'stable_version': '7.2.9',
@@ -105,7 +105,7 @@ TARGETS[DEFAULT_TARGET] = {
     },
     'piano_panel_reset_patch': {
         'file': 'patches/linux/7.2.9/0014-panel-piano-factory-reset.patch',
-        'sha256': 'f6d934da0ea51ec8309bcc969c09a04221c9029c69ca53070aa07da28799440a',
+        'sha256': '4b0462125d610ac8d26f9056dfd12caab73426988538100980df3529bb26f04e',
     },
     'dsi_post_resync_reset_patch': {
         'file': 'patches/linux/7.2.9/0015-dsi-sm8750-post-resync-controller-reset.patch',
@@ -149,11 +149,19 @@ TARGETS[DEFAULT_TARGET] = {
     },
     'nvt_system_resume_patch': {
         'file': 'patches/linux/7.2.9/0028-nvt-ts-system-resume-reenable.patch',
-        'sha256': '052ec2449c969ca044e21dcf0aa3e357434cc6e791c54f201493e5b6650f68df',
+        'sha256': '0139f2e4280ef7354993b174957c89e8ff3eeac451a526b874a1666c3e6439ca',
     },
     'pcie_active_wakeup_patch': {
         'file': 'patches/linux/7.2.9/0029-sm8750-pcie-active-wakeup.patch',
-        'sha256': 'ef595535d2fc49d17e0941c9dc6fc597853c5035d983922cdabd4cdc49513bb0',
+        'sha256': '3f8583bc4395b7f7987b71f55265c35b9aafde40cfaae072b0a073a4baec20af',
+    },
+    'smp2p_sleepstate_patch': {
+        'file': 'patches/linux/7.2.9/0030-soc-qcom-smp2p-sleepstate.patch',
+        'sha256': '0025a7f799b13233f3d7bc21fc89bc248fe8ef381954b00d5d4f183602d8d386',
+    },
+    'nanosic_backlight_default_patch': {
+        'file': 'patches/linux/7.2.9/0031-hid-nanosic-piano-backlight-default.patch',
+        'sha256': '506d654b3de697c40cf005a04f725a03f5cfcf254dbaf980ba12d796a5b275e1',
     },
     'dsi_stop_order_patch': {
         'file': 'patches/linux/7.2.9/0008-dsi-bonded-stop-slave-first.patch',
@@ -322,7 +330,7 @@ def write_manifest(path, record):
 
 def update_patches(root, policy):
     result = {}
-    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch', 'dsi_pll_registration_patch', 'dsi_slave_restore_patch', 'dpu_video_stop_order_patch', 'piano_pen_dock_patch', 'nvt_system_resume_patch', 'pcie_active_wakeup_patch'):
+    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch', 'dsi_pll_registration_patch', 'dsi_slave_restore_patch', 'dpu_video_stop_order_patch', 'piano_pen_dock_patch', 'nvt_system_resume_patch', 'pcie_active_wakeup_patch', 'smp2p_sleepstate_patch', 'nanosic_backlight_default_patch'):
         if key not in policy:
             continue
         row = policy[key]
@@ -390,6 +398,8 @@ def merge_stable(work, policy, paths):
         ('piano_pen_dock_patch', 'feat(input): add Piano magnetic pen-dock switch', 'piano_pen_dock_commit'),
         ('nvt_system_resume_patch', 'fix(input): re-enable touch after system resume', 'nvt_system_resume_commit'),
         ('pcie_active_wakeup_patch', 'fix(clk): preserve SM8750 active PCIe wakeup domains', 'pcie_active_wakeup_commit'),
+        ('smp2p_sleepstate_patch', 'feat(soc): notify the DSPs before system sleep', 'smp2p_sleepstate_commit'),
+        ('nanosic_backlight_default_patch', 'feat(hid): default the Piano cover backlight on', 'nanosic_backlight_default_commit'),
     ):
         if key not in paths:
             continue

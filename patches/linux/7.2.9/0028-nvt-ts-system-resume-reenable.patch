@@ -1,4 +1,4 @@
-From: Project SunUEFI <sunuefi@localhost>
+From: slwyts <slwyts@foxmail.com>
 Subject: [PATCH] Input: nt36532e - re-enable touch after system resume
 
 The system PM callbacks only cleared dev_pm_suspend. Unlike the runtime and

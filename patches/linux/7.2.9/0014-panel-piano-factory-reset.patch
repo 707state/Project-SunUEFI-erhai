@@ -1,4 +1,4 @@
-From: Project SunUEFI <sunuefi@localhost>
+From: slwyts <slwyts@foxmail.com>
 Subject: [PATCH] drm/panel: use the factory four-stage reset for Piano only
 
 Candidate based on f4c691bf537b95b26415a7e0217dcfeaa86820cf.

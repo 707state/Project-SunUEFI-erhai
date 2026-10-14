@@ -1,4 +1,4 @@
-From: Project SunUEFI <sunuefi@localhost>
+From: slwyts <slwyts@foxmail.com>
 Subject: [PATCH] clk: qcom: gcc-sm8750: preserve active PCIe wakeup domains
 
 The PCIe host and QMP PHY mark their devices as an awake path when the
