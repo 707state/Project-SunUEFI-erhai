@@ -89,6 +89,10 @@ READ_STATUS = TRUE
   INF Binaries/erhai/NpaDxe/NpaDxe.inf
   INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
   INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
+  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
   INF Binaries/erhai/VcsDxe/VcsDxe.inf
   INF Binaries/erhai/ClockDxe/ClockDxe.inf
   INF Binaries/erhai/ICBDxe/ICBDxe.inf
@@ -111,6 +115,10 @@ READ_STATUS = TRUE
     INF Binaries/erhai/NpaDxe/NpaDxe.inf
     INF Binaries/erhai/MailboxDxe/MailboxDxe.inf
     INF Binaries/erhai/QcomScmiDxe/QcomScmiDxe.inf
+    INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
+    INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+    INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+    INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
     INF Binaries/erhai/VcsDxe/VcsDxe.inf
     INF Binaries/erhai/ClockDxe/ClockDxe.inf
     INF Binaries/erhai/ICBDxe/ICBDxe.inf
@@ -119,10 +127,6 @@ READ_STATUS = TRUE
     INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
     INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
     INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
-    INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-    INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
-    INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-    INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
     INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
@@ -175,10 +179,6 @@ READ_STATUS = TRUE
   INF MdeModulePkg/Universal/HiiDatabaseDxe/HiiDatabaseDxe.inf
   INF QcomPkg/Drivers/IortDtDxe/IortDtDxe.inf
   INF EmbeddedPkg/Drivers/DtPlatformDxe/DtPlatformDxe.inf
-  INF MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
-  INF MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
-  INF MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
-  INF SiliciumPkg/Drivers/SimpleFbDxe/SimpleFbDxe.inf
   INF MdeModulePkg/Universal/BdsDxe/BdsDxe.inf
   INF MdeModulePkg/Universal/Disk/DiskIoDxe/DiskIoDxe.inf
   INF MdeModulePkg/Universal/Disk/PartitionDxe/PartitionDxe.inf
