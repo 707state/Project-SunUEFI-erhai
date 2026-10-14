@@ -41,7 +41,7 @@ TARGETS[DEFAULT_TARGET] = {
     **TARGETS['kernel69'],
     'series_target': 'kernel69',
     'patch_tree': TARGETS['kernel69']['target_tree'],
-    'target_tree': 'dd7f33a89bbea4e7428ab26172d3f808a6c0b078',
+    'target_tree': '66f6f50025b1f3e1a30ea146b79e9744ef456c65',
     'stable_commit': '5fce161649b4d779d1b76d9fcd52dc77779774b8',
     'stable_tree': 'c278d1443495d2a1a07fff2bcfb286b5c35baaea',
     'stable_version': '7.2.9',
@@ -161,7 +161,7 @@ TARGETS[DEFAULT_TARGET] = {
     },
     'nanosic_backlight_default_patch': {
         'file': 'patches/linux/7.2.9/0031-hid-nanosic-piano-backlight-default.patch',
-        'sha256': '506d654b3de697c40cf005a04f725a03f5cfcf254dbaf980ba12d796a5b275e1',
+        'sha256': '8451b3e8f839a9e2574c362e6ef3382ebd470546692d8de22c766f83798d43b2',
     },
     'q6apm_global_lifetime_patch': {
         'file': 'patches/linux/7.2.9/0032-asoc-q6apm-clear-global-on-remove.patch',

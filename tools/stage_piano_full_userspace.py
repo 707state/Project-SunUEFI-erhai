@@ -56,6 +56,12 @@ def stage_gnome_power(rootfs):
     if link.exists() or link.is_symlink():
         link.unlink()
     link.symlink_to('/usr/lib/systemd/user/piano-power-button.service')
+    # Remove the base image's old sleep masks. GNOME requests standard
+    # memory suspend; disk hibernation remains disabled by sleep.conf.
+    for unit in ('sleep.target', 'suspend.target'):
+        mask = rootfs / 'etc/systemd/system' / unit
+        if mask.is_symlink() and mask.readlink() == Path('/dev/null'):
+            mask.unlink()
     return copied
 
 

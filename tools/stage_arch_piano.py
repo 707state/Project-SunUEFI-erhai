@@ -91,7 +91,8 @@ def stage(args):
         guest(['chown', '-R', 'piano:piano', '/home/piano'])
         guest(['usermod', '-aG', 'audio,video,input,render', 'piano'])
         guest(['chpasswd'], input='piano:' + cfg['login']['password'] + '\n', text=True)
-        guest(['systemctl', 'mask', 'sleep.target', 'suspend.target', 'hibernate.target',
+        guest(['systemctl', 'unmask', 'sleep.target', 'suspend.target'])
+        guest(['systemctl', 'mask', 'hibernate.target',
                'hybrid-sleep.target', 'suspend-then-hibernate.target',
                'adsprpcd.service', 'adsprpcd_audiopd.service'])
         guest(['systemctl', 'enable', 'gdm', 'NetworkManager', 'sshd', 'bluetooth',

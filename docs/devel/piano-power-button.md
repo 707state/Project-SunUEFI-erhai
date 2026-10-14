@@ -4,7 +4,7 @@
 
 `linux/desktops/gnome/power-overlay/` 中的同一个电源键助手现在观察真实按键，不独占输入设备。短按电源或合盖先请求 GNOME 锁屏，再通过 Mutter 的显示电源接口关闭面板；再次短按或开盖恢复显示，不解除认证锁。长按仍打开 GNOME 关机菜单。背光调节仅作为显示电源接口调用失败时的回退。
 
-显示 PLL 保存恢复和 DPU 关屏顺序已进入默认内核。GNOME 的默认策略恢复为五分钟空闲后熄屏并立即锁屏，使用标准 `idle-delay`、`lock-enabled` 和 `lock-delay`；用户可以在桌面设置中修改。PCIe 恢复已修正，直接内核睡眠可以唤醒；桌面睡眠请求后的用户进程恢复仍在定位，因此自动睡眠暂未开启。休眠也未完成，当前没有磁盘交换区及挂载 root 前的恢复入口。
+显示 PLL 保存恢复和 DPU 关屏顺序已进入默认内核。GNOME 默认 2 分钟空闲后熄屏并立即锁屏，电池供电 5 分钟、外接电源 10 分钟自动挂起；使用标准 dconf 设置，用户可以在桌面设置中修改。键盘背光默认 80%，后续恢复用户保存的亮度。构建时解除 `sleep.target` 和 `suspend.target` 的旧禁用，安装标准 systemd sleep 配置，使用 `mem/deep`；休眠、混合睡眠及先睡眠后休眠保持禁用。
 
 ## 睡眠定位
 
@@ -21,6 +21,8 @@
 包含通知驱动的新内核完成了正常重启，驱动已绑定，ADSP 起初正常运行。随后二十秒 RTC 唤醒的桌面睡眠仍出现同一 FastRPC listener 断言及 `q6apm_is_adsp_ready` 的 Oops；systemd 日志明确显示用户会话已成功解冻。睡眠通知不能作为此故障的修复结论。当前需要分别定位 FastRPC 的睡眠恢复，以及 ADSP 重启时 `q6apm` 对象的生命周期问题，自动睡眠继续关闭。
 
 针对这两条路径增加两个内核补丁。`0032-asoc-q6apm-clear-global-on-remove.patch` 在设备移除前清除全局 APM 指针，并同步整个 readiness 查询，避免 DSP 重启时使用已释放对象。`0033-fastrpc-freeze-inflight-invoke.patch` 将用户 RPC 的等待改为 `TASK_INTERRUPTIBLE | TASK_FREEZABLE`：睡眠冻结时保留正在等待的请求，不因冻结打断 ioctl 后另发一个请求；普通信号仍能中断等待。后者是 FastRPC listener 断言的修复候选，需要带实际传感器进程验证，不能仅凭编译或节点绑定宣布解决。
+
+包含两处修正的 `g06dc05db1306` 内核已部署。两轮桌面睡眠均通过二十秒 RTC 唤醒，ADSP 保持 running，音频、传感器和蓝牙服务保持 active，未再记录 FastRPC 断言或内核 Oops；每轮睡眠后普通重启均完成，启动 ID 改变，不需要强制关机。这支持原来的关机卡死与 DSP 崩溃后的恢复工作队列有关，但不能据此排除其他重启问题。默认策略已同步到 GNOME overlay 和 Arch/Nyarch 组装入口，Debian GNOME 由同一个 stager 安装。尚未测得待机耗电。
 
 诊断用 [`piano-pm-log.dtso`](../../linux/dts/drafts/piano-pm-log.dtso)保持现有 4 MiB 预留区不变，将 Linux console 放到后一半，避免下一轮 UEFI 的 2 MiB 日志覆盖它。该布局不进入正常发布配置。若故障发生在控制台暂停期间，还需要临时将 `/sys/module/printk/parameters/console_suspend` 设为 `N`，定位后恢复为 `Y`。
 

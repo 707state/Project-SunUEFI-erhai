@@ -44,7 +44,7 @@ index 1f5f1bcc728..096c07a8e10 100644
  	.boot_ms = 500,
  	.wake_ms = 50,
  	.bl_write_ms = 3,
-+	.kbd_backlight_default = 35,
++	.kbd_backlight_default = 80,
  };
  
  static const struct of_device_id __maybe_unused nanosic_wn8030_of_match[] = {
