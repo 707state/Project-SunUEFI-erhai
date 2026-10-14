@@ -18,6 +18,8 @@
 
 原厂 `qcom,smp2p-sleepstate` 节点在 Linux 中此前未绑定，已增加原厂协议对应的睡眠通知候选：在睡眠准备时清除 AP-awake 第 12 位，恢复后置回。缺少通知与 FastRPC 断言的关系尚待实机确认；不能根据节点绑定或编译成功宣称解决。重启停在 `Rebooting` 的照片也确认旧内核未完成复位，强制重启后才开始运行新内核。
 
+包含通知驱动的新内核完成了正常重启，驱动已绑定，ADSP 起初正常运行。随后二十秒 RTC 唤醒的桌面睡眠仍出现同一 FastRPC listener 断言及 `q6apm_is_adsp_ready` 的 Oops；systemd 日志明确显示用户会话已成功解冻。睡眠通知不能作为此故障的修复结论。当前需要分别定位 FastRPC 的睡眠恢复，以及 ADSP 重启时 `q6apm` 对象的生命周期问题，自动睡眠继续关闭。
+
 诊断用 [`piano-pm-log.dtso`](../../linux/dts/drafts/piano-pm-log.dtso)保持现有 4 MiB 预留区不变，将 Linux console 放到后一半，避免下一轮 UEFI 的 2 MiB 日志覆盖它。该布局不进入正常发布配置。若故障发生在控制台暂停期间，还需要临时将 `/sys/module/printk/parameters/console_suspend` 设为 `N`，定位后恢复为 `Y`。
 
 ## 早期方案与故障记录
