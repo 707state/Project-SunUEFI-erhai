@@ -1,0 +1,31 @@
+[Defines]
+  INF_VERSION = 0x0001001B
+  BASE_NAME = ErhaiUfsProbe
+  FILE_GUID = 3E9A7C51-8D24-4F6B-B1E0-7A2C5D84F193
+  MODULE_TYPE = UEFI_DRIVER
+  VERSION_STRING = 1.0
+  ENTRY_POINT = ErhaiUfsProbeEntry
+
+[Sources]
+  ErhaiUfsProbe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  QcomPkg/QcomPkg.dec
+  erhaiPkg/erhai.dec
+
+[LibraryClasses]
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+  DxeServicesLib
+  FdtLib
+  IoLib
+  DebugLib
+  MemoryAllocationLib
+
+[Protocols]
+  gEfiClockProtocolGuid
+
+[Depex]
+  gEfiClockProtocolGuid
