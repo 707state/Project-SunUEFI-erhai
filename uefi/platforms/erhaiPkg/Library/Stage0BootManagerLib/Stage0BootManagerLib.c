@@ -36,7 +36,23 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
 
   __asm__ volatile ("mrs %0, CurrentEL" : "=r" (CurrentEl));
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop);
-  Print (L"\r\nSunUEFI: OnePlus Pad 2 Pro / erhai / SM8750-AB\r\n");
+  // Framebuffer-serial diagnostics: no console dependency, survives ConOut==NULL.
+  DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_AFTER_CONSOLE EL=%u GOP=%r\n", (UINT32)(CurrentEl >> 2), Status));
+  {
+    UINTN HandleCount = 0;
+    EFI_HANDLE *Handles = NULL;
+    EFI_STATUS SubStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiGraphicsOutputProtocolGuid,
+                                                    NULL, &HandleCount, &Handles);
+    DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_GOP_HANDLES count=%u status=%r\n", (UINT32)HandleCount, SubStatus));
+    if (!EFI_ERROR (SubStatus) && Handles != NULL) {
+      gBS->FreePool (Handles);
+    }
+  }
+  if (gST != NULL && gST->ConOut != NULL) {
+    if (gST != NULL && gST->ConOut != NULL) Print (L"\r\nSunUEFI: OnePlus Pad 2 Pro / erhai / SM8750-AB\r\n");
+  } else {
+    DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_CONOUT_NULL\n"));
+  }
   {
     EFI_STATUS SubStatus;
     UINTN HandleCount = 0;
@@ -55,7 +71,7 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
         }
         BlockCount++;
         if (BlockCount <= 8 && Block->Media != NULL) {
-          Print (L"BlockIO %u: %llu MiB, block %u B, removable %u%s\r\n",
+          if (gST != NULL && gST->ConOut != NULL) Print (L"BlockIO %u: %llu MiB, block %u B, removable %u%s\r\n",
                  (UINT32)BlockCount,
                  (unsigned long long)((Block->Media->LastBlock + 1) *
                                       (UINT64)Block->Media->BlockSize) >> 20,
@@ -66,7 +82,7 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
       }
       gBS->FreePool (Handles);
     } else {
-      Print (L"BlockIO: none found (%r)\r\n", SubStatus);
+      if (gST != NULL && gST->ConOut != NULL) Print (L"BlockIO: none found (%r)\r\n", SubStatus);
     }
     SubStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
                                          NULL, &HandleCount, &Handles);
@@ -80,26 +96,26 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
                                                 &gEfiSimpleFileSystemProtocolGuid,
                                                 (VOID **)&Fs)) && Fs != NULL &&
               !EFI_ERROR (Fs->OpenVolume (Fs, &Root)) && Root != NULL) {
-            Print (L"FileSystem %u opened\r\n", (UINT32)FsCount);
+            if (gST != NULL && gST->ConOut != NULL) Print (L"FileSystem %u opened\r\n", (UINT32)FsCount);
             Root->Close (Root);
           } else {
-            Print (L"FileSystem %u open failed\r\n", (UINT32)FsCount);
+            if (gST != NULL && gST->ConOut != NULL) Print (L"FileSystem %u open failed\r\n", (UINT32)FsCount);
           }
         }
       }
       gBS->FreePool (Handles);
     } else {
-      Print (L"SimpleFileSystem: none found (%r)\r\n", SubStatus);
+      if (gST != NULL && gST->ConOut != NULL) Print (L"SimpleFileSystem: none found (%r)\r\n", SubStatus);
     }
-    Print (L"Storage summary: %u block devices, %u filesystems\r\n",
+    if (gST != NULL && gST->ConOut != NULL) Print (L"Storage summary: %u block devices, %u filesystems\r\n",
            (UINT32)BlockCount, (UINT32)FsCount);
   }
-  Print (L"Stage 0 diagnostic: DXE and console reached, EL%u\r\n", (UINT32)(CurrentEl >> 2));
+  if (gST != NULL && gST->ConOut != NULL) Print (L"Stage 0 diagnostic: DXE and console reached, EL%u\r\n", (UINT32)(CurrentEl >> 2));
   DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_STORAGE_ENUM_DONE\n"));
-  Print (L"Internal storage and USB mass-storage drivers are excluded.\r\n");
-  Print (L"Linux and Windows PE boot are not implemented in this image.\r\n");
+  if (gST != NULL && gST->ConOut != NULL) Print (L"Internal storage and USB mass-storage drivers are excluded.\r\n");
+  if (gST != NULL && gST->ConOut != NULL) Print (L"Linux and Windows PE boot are not implemented in this image.\r\n");
   if (!EFI_ERROR (Status) && Gop != NULL && Gop->Mode != NULL && Gop->Mode->Info != NULL) {
-    Print (L"GOP %ux%u, stride %u, framebuffer 0x%lx\r\n",
+    if (gST != NULL && gST->ConOut != NULL) Print (L"GOP %ux%u, stride %u, framebuffer 0x%lx\r\n",
       Gop->Mode->Info->HorizontalResolution, Gop->Mode->Info->VerticalResolution,
       Gop->Mode->Info->PixelsPerScanLine, Gop->Mode->FrameBufferBase);
   }
@@ -109,7 +125,7 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
   if (!EFI_ERROR (Status)) {
     Status = gBS->SetTimer (mReturnToAndroidEvent, TimerRelative, 45ULL * 10000000ULL);
     if (!EFI_ERROR (Status)) {
-      Print (L"Automatic cold reboot requested in 45 seconds.\r\n");
+      if (gST != NULL && gST->ConOut != NULL) Print (L"Automatic cold reboot requested in 45 seconds.\r\n");
     } else {
       gBS->CloseEvent (mReturnToAndroidEvent);
       mReturnToAndroidEvent = NULL;
