@@ -1,0 +1,21 @@
+[Defines]
+  INF_VERSION = 0x0001001B
+  BASE_NAME = GeniSerialPortLib
+  FILE_GUID = 5A7C1E42-9B30-4E8D-A1F6-2C9D80B7E331
+  MODULE_TYPE = BASE
+  VERSION_STRING = 1.0
+  LIBRARY_CLASS = SerialPortLib
+
+[Sources]
+  GeniSerialPortLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  erhaiPkg/erhai.dec
+
+[LibraryClasses]
+  IoLib
+  BaseLib
+
+[FixedPcd]
+  gErhaiPkgTokenSpaceGuid.PcdGeniUartBase

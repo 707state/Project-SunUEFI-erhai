@@ -1,0 +1,11 @@
+[Defines]
+  DEC_SPECIFICATION = 0x00010005
+  PACKAGE_NAME = erhaiPkg
+  PACKAGE_GUID = 1E6E2DEE-8FD9-5BB0-9650-D2207569C20B
+  PACKAGE_VERSION = 0.1
+
+[Guids]
+  gErhaiPkgTokenSpaceGuid = { 0x9f451c2e, 0x6ab8, 0x4d3e, { 0xa5, 0x1c, 0x8e, 0x2f, 0x47, 0xd0, 0x93, 0x88 } }
+
+[PcdsFixedAtBuild]
+  gErhaiPkgTokenSpaceGuid.PcdGeniUartBase|0x00A9C000|UINT64|0x00000001
