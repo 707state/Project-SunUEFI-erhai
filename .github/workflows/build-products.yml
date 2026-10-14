@@ -110,6 +110,7 @@ jobs:
                   ./build.sh ffmpeg --install-dependencies
                   ./build.sh release-rootfs --desktop "${SUNUEFI_BUILD_TARGET#debian-}"
                   ./build.sh package --root-size-mib 8192
+                  python3 tools/package_sparse_images.py --bundle artifacts/release-7.2.9 --output artifacts/fastboot-sparse
                   ./build.sh installer --bundle artifacts/release-7.2.9
                   mkdir -p artifacts/rootfs/bundle
                   mv artifacts/installer/bundle/root.ext4.img artifacts/rootfs/bundle/
@@ -171,6 +172,15 @@ jobs:
         with:
           name: SunUEFI-Root-${{ matrix.target }}-${{ github.sha }}
           path: artifacts/rootfs/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 1
+      - name: Sparse ESP and root for factory Fastboot
+        if: startsWith(matrix.target, 'debian-')
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: SunUEFI-Fastboot-Sparse-${{ matrix.target }}-${{ github.sha }}
+          path: artifacts/fastboot-sparse/
           if-no-files-found: error
           retention-days: 7
           compression-level: 1
