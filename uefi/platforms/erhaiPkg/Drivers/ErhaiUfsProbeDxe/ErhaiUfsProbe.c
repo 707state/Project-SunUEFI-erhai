@@ -10,6 +10,7 @@
 #include <Library/IoLib.h>
 #include <Library/DebugLib.h>
 #include <Library/MemoryAllocationLib.h>
+#include <Library/BaseMemoryLib.h>
 #include <PiDxe.h>
 #include <Library/DxeServicesLib.h>
 #include <Protocol/FirmwareVolume2.h>
@@ -111,7 +112,13 @@ EFI_STATUS EFIAPI ErhaiUfsProbeEntry(
     DEBUG((DEBUG_WARN, "SUNUEFI_UFS_DTB_FV %r\n", Status));
     return Status;
   }
-  Probe((CONST VOID *)Dtb);
-  FreePool(Dtb);
+  // GetSectionFromAnyFv may return an FV-internal pointer that must NOT be freed;
+  // copy to pool memory and keep the copy for this driver's lifetime.
+  VOID *DtbCopy = AllocatePool(DtbSize);
+  if (DtbCopy == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+  CopyMem(DtbCopy, Dtb, DtbSize);
+  Probe((CONST VOID *)DtbCopy);
   return EFI_SUCCESS;
 }
