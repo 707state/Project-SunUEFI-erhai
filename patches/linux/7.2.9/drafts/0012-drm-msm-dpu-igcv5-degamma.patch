@@ -1,4 +1,4 @@
-From: Project SunUEFI <sunuefi@localhost>
+From: slwyts <slwyts@foxmail.com>
 Subject: [PATCH] drm/msm/dpu: add ordinary IGC v5 through shared REGDMA color state
 
 Expose the verified ordinary 257-entry, 16-bit IGC v5 layout through standard

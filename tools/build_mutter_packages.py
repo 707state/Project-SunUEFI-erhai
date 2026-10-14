@@ -130,7 +130,7 @@ def prepare(rootfs, cache, work, origin, log):
             f'mutter ({PACKAGE_VERSION}) UNRELEASED; urgency=medium\n\n'
             '  * Treat empty KMS gamma as bypass before resampling.\n'
             '  * Enable the existing uncalibrated sRGB fallback for no-EDID displays.\n\n'
-            f' -- Project SunUEFI <sunuefi@localhost>  {format_datetime(datetime.now(timezone.utc))}\n\n'
+            f' -- slwyts <slwyts@foxmail.com>  {format_datetime(datetime.now(timezone.utc))}\n\n'
             + changelog.read_text())
     for patch in PATCHES:
         if debian.sha(source / 'debian/patches' / ('sunuefi-' + patch.name)) != debian.sha(patch):

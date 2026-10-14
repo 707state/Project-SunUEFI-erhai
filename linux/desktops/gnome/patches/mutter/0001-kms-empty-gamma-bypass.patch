@@ -1,4 +1,4 @@
-From: Project SunUEFI <sunuefi@localhost>
+From: slwyts <slwyts@foxmail.com>
 Subject: [PATCH] backends/native: treat empty gamma as bypass before resampling
 
 DisplayConfig SetCrtcGamma accepts three empty arrays, and GetCrtcGamma

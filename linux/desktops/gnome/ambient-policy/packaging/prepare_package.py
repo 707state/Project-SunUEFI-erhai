@@ -35,7 +35,7 @@ def debian(source: Path, destination: Path) -> None:
     entry = (
         f"gnome-settings-daemon ({version}+sunuefi1) UNRELEASED; urgency=medium\n\n"
         "  * Add an optional measured-lux ambient-light policy for Xiaomi Piano.\n\n"
-        f" -- Project SunUEFI <sunuefi@localhost>  {format_datetime(datetime.now(timezone.utc))}\n\n"
+        f" -- slwyts <slwyts@foxmail.com>  {format_datetime(datetime.now(timezone.utc))}\n\n"
     )
     changelog.write_text(entry + changelog.read_text())
     # Apply all Debian patches through dpkg-source, so context failures are real.

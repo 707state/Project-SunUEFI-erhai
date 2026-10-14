@@ -1,4 +1,4 @@
-From: Project SunUEFI <sunuefi@localhost>
+From: slwyts <slwyts@foxmail.com>
 Subject: [PATCH] color: generate a standard fallback profile without EDID
 
 A physical DSI monitor without EDID has a real colord device ID but no
