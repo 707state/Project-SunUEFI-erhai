@@ -50,7 +50,7 @@
   gEfiMdePkgTokenSpaceGuid.PcdDebugPrintErrorLevel|0x8007EE0F
 
 [LibraryClasses]
-  SerialPortLib|erhaiPkg/Library/GeniSerialPortLib/GeniSerialPortLib.inf
+  SerialPortLib|SiliciumPkg/Library/FrameBufferSerialPortLib/FrameBufferSerialPortLib.inf
   DebugLib|MdePkg/Library/BaseDebugLibSerialPort/BaseDebugLibSerialPort.inf
 
 [PcdsFixedAtBuild]
