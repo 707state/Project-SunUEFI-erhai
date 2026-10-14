@@ -2,6 +2,12 @@
 
 Piano 使用两路 DSI 驱动面板。默认保持 120 Hz，以兼容当前手写笔扫描。
 
+## DSI PHY 接口时钟管理
+
+默认内核纳入 Junhao Xie 的 [接口时钟运行时管理补丁](https://github.com/BigfootACA/linux/commit/b95037aef0a0bf5cd612e7517a67644887e9fd5d)，本地文件为 `0034-dsi-phy-runtime-interface-clock.patch`。将 `pm_clk` 的长期准备改为运行时恢复时 `clk_prepare_enable()`、暂停时 `clk_disable_unprepare()`，与当前已有的 PLL 和从路恢复补丁配合。
+
+实机对照完成正常启动、显示电源关闭再开启、二十秒 RTC 唤醒的整机挂起以及挂起后的普通重启。画面正常，操作中未再出现先前观察到的短暂红色虚影；恢复后触控收帧、ADSP 运行、Wi-Fi 为 D0，未出现新的 PLL、FIFO、时钟失衡或内核崩溃日志。共享显示 AHB 时钟仍可能被其他使用者占用，因此这些结果不证明显示整体已完全断电，也不等同于待机耗电测量。
+
 ## 2026-10-13 修正
 
 灭屏再亮屏时，从路 PHY 的时钟寄存器没有恢复。首次启动两路
