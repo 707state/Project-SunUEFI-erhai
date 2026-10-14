@@ -20,6 +20,8 @@
 
 包含通知驱动的新内核完成了正常重启，驱动已绑定，ADSP 起初正常运行。随后二十秒 RTC 唤醒的桌面睡眠仍出现同一 FastRPC listener 断言及 `q6apm_is_adsp_ready` 的 Oops；systemd 日志明确显示用户会话已成功解冻。睡眠通知不能作为此故障的修复结论。当前需要分别定位 FastRPC 的睡眠恢复，以及 ADSP 重启时 `q6apm` 对象的生命周期问题，自动睡眠继续关闭。
 
+针对这两条路径增加两个内核补丁。`0032-asoc-q6apm-clear-global-on-remove.patch` 在设备移除前清除全局 APM 指针，并同步整个 readiness 查询，避免 DSP 重启时使用已释放对象。`0033-fastrpc-freeze-inflight-invoke.patch` 将用户 RPC 的等待改为 `TASK_INTERRUPTIBLE | TASK_FREEZABLE`：睡眠冻结时保留正在等待的请求，不因冻结打断 ioctl 后另发一个请求；普通信号仍能中断等待。后者是 FastRPC listener 断言的修复候选，需要带实际传感器进程验证，不能仅凭编译或节点绑定宣布解决。
+
 诊断用 [`piano-pm-log.dtso`](../../linux/dts/drafts/piano-pm-log.dtso)保持现有 4 MiB 预留区不变，将 Linux console 放到后一半，避免下一轮 UEFI 的 2 MiB 日志覆盖它。该布局不进入正常发布配置。若故障发生在控制台暂停期间，还需要临时将 `/sys/module/printk/parameters/console_suspend` 设为 `N`，定位后恢复为 `Y`。
 
 ## 早期方案与故障记录

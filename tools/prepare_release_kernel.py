@@ -41,7 +41,7 @@ TARGETS[DEFAULT_TARGET] = {
     **TARGETS['kernel69'],
     'series_target': 'kernel69',
     'patch_tree': TARGETS['kernel69']['target_tree'],
-    'target_tree': 'd0544e8f6a22fd7de836449581b4ad6c64ebb10c',
+    'target_tree': 'dd7f33a89bbea4e7428ab26172d3f808a6c0b078',
     'stable_commit': '5fce161649b4d779d1b76d9fcd52dc77779774b8',
     'stable_tree': 'c278d1443495d2a1a07fff2bcfb286b5c35baaea',
     'stable_version': '7.2.9',
@@ -162,6 +162,14 @@ TARGETS[DEFAULT_TARGET] = {
     'nanosic_backlight_default_patch': {
         'file': 'patches/linux/7.2.9/0031-hid-nanosic-piano-backlight-default.patch',
         'sha256': '506d654b3de697c40cf005a04f725a03f5cfcf254dbaf980ba12d796a5b275e1',
+    },
+    'q6apm_global_lifetime_patch': {
+        'file': 'patches/linux/7.2.9/0032-asoc-q6apm-clear-global-on-remove.patch',
+        'sha256': '0478b5ee57f9890112c9bf351a0f015a6b64202de8b08470ed0bc0e730a77827',
+    },
+    'fastrpc_freezable_invoke_patch': {
+        'file': 'patches/linux/7.2.9/0033-fastrpc-freeze-inflight-invoke.patch',
+        'sha256': '74fea53dac6f21f032aef99e795c886480788d3a756e62772ebc3fb2b984c603',
     },
     'dsi_stop_order_patch': {
         'file': 'patches/linux/7.2.9/0008-dsi-bonded-stop-slave-first.patch',
@@ -330,7 +338,7 @@ def write_manifest(path, record):
 
 def update_patches(root, policy):
     result = {}
-    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch', 'dsi_pll_registration_patch', 'dsi_slave_restore_patch', 'dpu_video_stop_order_patch', 'piano_pen_dock_patch', 'nvt_system_resume_patch', 'pcie_active_wakeup_patch', 'smp2p_sleepstate_patch', 'nanosic_backlight_default_patch'):
+    for key in ('conflict_resolution', 'cpu_model_patch', 'fastrpc_dma_patch', 'panel_depth_patch', 'flash_cleanup_patch', 'va_clock_order_patch', 'gcv2_backend_patch', 'gcv2_catalog_patch', 'dsi_stop_order_patch', 'dsi_fixed_bpc_patch', 'flash_torch_rounding_patch', 'va_mono_patch', 'dsi_video_phases_patch', 'dsi_post_hs_sync_patch', 'piano_panel_reset_patch', 'dsi_post_resync_reset_patch', 'piano_privacy_led_patch', 'nvt_panel_follower_patch', 'p81c_pressure_hid_patch', 'piano_preferred_120hz_patch', 'piano_function_row_patch', 'dsi_pll_registration_patch', 'dsi_slave_restore_patch', 'dpu_video_stop_order_patch', 'piano_pen_dock_patch', 'nvt_system_resume_patch', 'pcie_active_wakeup_patch', 'smp2p_sleepstate_patch', 'nanosic_backlight_default_patch', 'q6apm_global_lifetime_patch', 'fastrpc_freezable_invoke_patch'):
         if key not in policy:
             continue
         row = policy[key]
@@ -400,6 +408,8 @@ def merge_stable(work, policy, paths):
         ('pcie_active_wakeup_patch', 'fix(clk): preserve SM8750 active PCIe wakeup domains', 'pcie_active_wakeup_commit'),
         ('smp2p_sleepstate_patch', 'feat(soc): notify the DSPs before system sleep', 'smp2p_sleepstate_commit'),
         ('nanosic_backlight_default_patch', 'feat(hid): default the Piano cover backlight on', 'nanosic_backlight_default_commit'),
+        ('q6apm_global_lifetime_patch', 'fix(asoc): synchronize global APM readiness with removal', 'q6apm_global_lifetime_commit'),
+        ('fastrpc_freezable_invoke_patch', 'fix(fastrpc): freeze in-flight invocation waiters in place', 'fastrpc_freezable_invoke_commit'),
     ):
         if key not in paths:
             continue
