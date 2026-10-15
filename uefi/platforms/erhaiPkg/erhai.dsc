@@ -112,4 +112,4 @@
   DeviceBootManagerLib|erhaiPkg/Library/Stage0BootManagerLib/Stage0BootManagerLib.inf
 [Components]
   erhaiPkg/Drivers/CapsuleArchNullDxe/CapsuleArchNullDxe.inf
-  erhaiPkg/Drivers/ErhaiUfsProbeDxe/ErhaiUfsProbe.inf
+  erhaiPkg/Drivers/ErhaiUfsDxe/ErhaiUfsDxe.inf

@@ -1,0 +1,62 @@
+[Defines]
+  INF_VERSION = 0x0001001B
+  BASE_NAME = ErhaiUfsDxe
+  FILE_GUID = 7C2F9B84-D3A1-4E57-B2C8-91F6A0D4E2B7
+  MODULE_TYPE = UEFI_DRIVER
+  VERSION_STRING = 1.0
+  ENTRY_POINT = ErhaiUfsDxeEntry
+
+[Sources]
+  ErhaiUfsDxe.c
+  PianoUfsProbe.c
+  PianoDma.c
+  PianoSmmu.c
+  PianoIoPageTable.c
+  PianoOwnedSmmu.c
+  PianoFaultRecovery.c
+  PianoUfsDmaLayout.c
+  PianoReadOnlyBlock.c
+  PianoGpt.c
+  PianoUfsReadOnlyDma.c
+
+[BuildOptions]
+  *_*_AARCH64_CC_FLAGS = -DPIANO_UFS_BLOCKIO
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  ArmPkg/ArmPkg.dec
+  QcomPkg/QcomPkg.dec
+  SiliciumPkg/SiliciumPkg.dec
+  erhaiPkg/erhai.dec
+
+[LibraryClasses]
+  UefiLib
+  ArmSmcLib
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
+  UefiDriverEntryPoint
+  DxeServicesLib
+  DxeServicesTableLib
+  FdtLib
+  IoLib
+  DebugLib
+  BaseLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  MemoryMapHelperLib
+  CacheMaintenanceLib
+  TimerLib
+  PrintLib
+
+[Protocols]
+  gEfiClockProtocolGuid
+  gEfiBlockIoProtocolGuid
+  gEfiDevicePathProtocolGuid
+  gEfiCpuArchProtocolGuid
+
+[Guids]
+  gEfiEventExitBootServicesGuid
+
+[Depex]
+  gEfiClockProtocolGuid
