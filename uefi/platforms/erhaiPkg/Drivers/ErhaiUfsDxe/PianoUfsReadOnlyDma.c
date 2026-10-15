@@ -380,6 +380,20 @@ STATIC EFI_STATUS ReadLunCapacity(VOID) {
     &mData);if(EFI_ERROR(Status))return Status;
   Status=PianoDmaMap(&mData);if(EFI_ERROR(Status))return Status;
   Status=ReadScsi("REPORT_LUNS",10,0,PianoUfsReportLuns,0,4096);
+  if(EFI_ERROR(Status)) {
+    // erhai: ABL leaves the LUNs power-down; the device answers REPORT_LUNS with
+    // CHECK CONDITION sense 02/04/02 (LOGICAL UNIT NOT READY, INITIALIZING COMMAND
+    // REQUIRED). Issue START STOP UNIT(Start) on the device well-known LUN and
+    // retry the report once — the same resume primitive piano uses after sleep.
+    DEBUG((DEBUG_WARN,"SUNUEFI_UFS_REPORT_LUNS_NOT_READY status=%r\n",Status));
+    EFI_STATUS Resume=PianoUfsBuildResumeActive(mTrl.Cpu,mTrl.Bytes,mUcd.Cpu,mUcd.Bytes,mUcd.DeviceAddress,11);
+    if(!EFI_ERROR(Resume))Resume=Submit("RESUME_DEVICE_ACTIVE_NO_DATA",11,FALSE);
+    DEBUG((DEBUG_WARN,"SUNUEFI_UFS_RESUME_FOR_REPORT_LUNS %r physical_ufs_writes=0\n",Resume));
+    if(!EFI_ERROR(Resume)) {
+      gBS->Stall(10000);
+      Status=ReadScsi("REPORT_LUNS_RETRIED",12,0,PianoUfsReportLuns,0,4096);
+    }
+  }
   DEBUG((DEBUG_WARN,"SUNUEFI_UFS_REPORT_LUNS_RESULT %r transferred=%u\n",Status,mTransferred));if(EFI_ERROR(Status))return Status;
   UINT8 Luns[8];UINTN Count;
   Status=PianoUfsParseLuns(mData.Cpu,mTransferred,Luns,&Count);if(EFI_ERROR(Status))return Status;
