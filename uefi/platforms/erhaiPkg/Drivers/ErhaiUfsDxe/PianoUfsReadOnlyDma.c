@@ -692,6 +692,12 @@ STATIC EFI_STATUS ServiceRead(VOID *Context,UINT8 Lun,EFI_LBA Lba,UINTN Bytes,VO
   EFI_TPL Old=gBS->RaiseTPL(TPL_CALLBACK);mBlockBusy=TRUE;EFI_STATUS Status=EFI_SUCCESS;
   for(UINTN Offset=0;Offset<Bytes;Offset+=mLuns[I].Block) {
     Status=ReadScsi("BLOCKIO_READ",mServiceTag++,Lun,PianoUfsReadLba10,(UINT32)(Lba+Offset/mLuns[I].Block),mLuns[I].Block);
+    // erhai diagnostic: response fields + first bytes of the data buffer, so a
+    // data-less "success" is visible on screen instead of looping silently.
+    {CONST UINT8 *Rr=(CONST UINT8 *)mUcd.Cpu+PIANO_UFS_RESPONSE_OFFSET;
+     DEBUG((DEBUG_WARN,"ERHAI_BLOCK_READ_DIAG lun=%u lba=%lu status=%r transferred=%u r1=%02x r3=%02x r6=%02x data=%02x %02x %02x %02x\n",
+       Lun,(UINT64)Lba,Status,mTransferred,Rr[1],Rr[3],Rr[6],
+       ((CONST UINT8 *)mData.Cpu)[0],((CONST UINT8 *)mData.Cpu)[1],((CONST UINT8 *)mData.Cpu)[2],((CONST UINT8 *)mData.Cpu)[3]));}
     if(EFI_ERROR(Status) || mTransferred!=mLuns[I].Block){if(!EFI_ERROR(Status))Status=EFI_BAD_BUFFER_SIZE;break;}
     CopyMem((UINT8 *)Buffer+Offset,mData.Cpu,mLuns[I].Block);
     ++mIoReads[I];mIoBytes[I]+=mLuns[I].Block;
