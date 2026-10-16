@@ -960,10 +960,9 @@ STATIC EFI_STATUS PublishBlocks(VOID) {
   Status=gBS->CreateEventEx(EVT_NOTIFY_SIGNAL,TPL_NOTIFY,PianoUfsExitBoot,NULL,&gEfiEventExitBootServicesGuid,&mExitBootEvent);
   if(EFI_ERROR(Status))return Status;
   PianoUfsRetainClocks();
-  for(UINTN I=0;I<mLunCount;++I) {
-    Status=gBS->ConnectController(mBlockHandles[I],NULL,NULL,TRUE);
-    DEBUG((DEBUG_WARN,"SUNUEFI_UFS_BLOCKIO_CONNECT lun=%u %r\n",mLuns[I].Id,Status));
-  }
+  // erhai: do NOT ConnectController from this driver entry. Driver binding from
+  // inside a DXE driver's entry raced the storage stack and caused a connect storm.
+  // The platform BDS calls EfiBootManagerConnectAll at the designed time instead.
   EFI_HANDLE *Handles=NULL;UINTN Count=0;
   Status=gBS->LocateHandleBuffer(ByProtocol,&gEfiBlockIoProtocolGuid,NULL,&Count,&Handles);
   DEBUG((DEBUG_WARN,"SUNUEFI_UFS_BLOCKIO_PUBLISHED parents=%u all_block_handles=%u status=%r\n",(UINT32)mLunCount,(UINT32)Count,Status));

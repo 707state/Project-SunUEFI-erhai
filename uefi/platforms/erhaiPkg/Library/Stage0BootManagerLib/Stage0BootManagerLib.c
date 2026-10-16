@@ -6,6 +6,7 @@
 #include <Library/UefiRuntimeServicesTableLib.h>
 #include <Library/DebugLib.h>
 #include <Protocol/GraphicsOutput.h>
+#include <Library/UefiBootManagerLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/SimpleFileSystem.h>
 #include <Protocol/DevicePath.h>
@@ -35,6 +36,11 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
   UINT64 CurrentEl;
 
   __asm__ volatile ("mrs %0, CurrentEL" : "=r" (CurrentEl));
+  // Standard BDS-time driver binding: connect every handle now that all drivers
+  // (DiskIo/Partition/Fat and the UFS engine's BlockIO) are dispatched. This is
+  // the designed moment for Partition->FAT->SimpleFileSystem binding.
+  EfiBootManagerConnectAll ();
+  DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_CONNECT_ALL_DONE\n"));
   Status = gBS->LocateProtocol (&gEfiGraphicsOutputProtocolGuid, NULL, (VOID **)&Gop);
   // Framebuffer-serial diagnostics: no console dependency, survives ConOut==NULL.
   DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_AFTER_CONSOLE EL=%u GOP=%r\n", (UINT32)(CurrentEl >> 2), Status));

@@ -13,6 +13,7 @@
   MsCorePkg/MsCorePkg.dec
 [LibraryClasses]
   UefiLib
+  UefiBootManagerLib
   UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
   DebugLib
