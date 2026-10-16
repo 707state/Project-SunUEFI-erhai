@@ -1,0 +1,345 @@
+name: build
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      workspace_ref:
+        description: 'Umbrella revision containing build-rootfs-image.sh'
+        default: main
+        required: true
+      kernel_ref:
+        description: 'linux-piano revision containing piano_rootfs.config'
+        default: piano-7.2.6
+        required: true
+      packaging_ref:
+        description: 'debian-piano revision to build (empty = the ref this workflow runs from)'
+        default: ''
+        required: false
+      firmware_ref:
+        description: 'piano-firmware revision'
+        default: main
+        required: false
+      mesa_ref:
+        description: 'piano-mesa revision'
+        default: main
+        required: false
+      sensors_ref:
+        description: 'piano-sensors revision'
+        default: main
+        required: false
+      mipps_ref:
+        description: 'piano-mipps-auth revision'
+        default: main
+        required: false
+
+permissions:
+  contents: read
+  # Pruning this ref's older compiler caches before saving a new one.
+  actions: write
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 300
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_COMPILERCHECK: content
+      CCACHE_MAXSIZE: 8G
+    steps:
+      # A pull request builds against same-named companion branches in the
+      # umbrella, kernel and firmware repos when they exist (kernel also:
+      # piano/<topic>), so cross-repo changes are testable before any of them
+      # merges. A manual run from main can point every repo at any branch.
+      - name: Resolve companion refs
+        id: refs
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          INPUT_WORKSPACE: ${{ inputs.workspace_ref }}
+          INPUT_KERNEL: ${{ inputs.kernel_ref }}
+          INPUT_PACKAGING: ${{ inputs.packaging_ref }}
+          INPUT_FIRMWARE: ${{ inputs.firmware_ref }}
+          INPUT_MESA: ${{ inputs.mesa_ref }}
+          INPUT_SENSORS: ${{ inputs.sensors_ref }}
+          INPUT_MIPPS: ${{ inputs.mipps_ref }}
+        run: |
+          has() { git ls-remote --exit-code --heads "https://github.com/blu-sharky/$1" "refs/heads/$2" >/dev/null; }
+          workspace=${INPUT_WORKSPACE:-main}
+          kernel=${INPUT_KERNEL:-piano-7.2.6}
+          packaging=${INPUT_PACKAGING:-$GITHUB_SHA}
+          firmware=${INPUT_FIRMWARE:-main}
+          mesa=${INPUT_MESA:-main}
+          sensors=${INPUT_SENSORS:-main}
+          mipps=${INPUT_MIPPS:-main}
+          if [ "$EVENT" = pull_request ]; then
+            if has xiaomi-piano-linux "$HEAD_REF"; then workspace=$HEAD_REF; fi
+            for ref in "$HEAD_REF" "piano/${HEAD_REF#*/}"; do
+              if has linux-piano "$ref"; then kernel=$ref; break; fi
+            done
+            if has piano-firmware "$HEAD_REF"; then firmware=$HEAD_REF; fi
+            if has piano-mesa "$HEAD_REF"; then mesa=$HEAD_REF; fi
+            if has piano-sensors "$HEAD_REF"; then sensors=$HEAD_REF; fi
+            for ref in "$HEAD_REF" "piano/${HEAD_REF#*/}"; do
+              if has piano-mipps-auth "$ref"; then mipps=$ref; break; fi
+            done
+          fi
+          echo "workspace=$workspace kernel=$kernel packaging=$packaging firmware=$firmware mesa=$mesa sensors=$sensors mipps=$mipps"
+          {
+            echo "workspace=$workspace"
+            echo "kernel=$kernel"
+            echo "packaging=$packaging"
+            echo "firmware=$firmware"
+            echo "mesa=$mesa"
+            echo "sensors=$sensors"
+            echo "mipps=$mipps"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Checkout orchestration
+        uses: actions/checkout@v5
+        with:
+          repository: blu-sharky/xiaomi-piano-linux
+          ref: ${{ steps.refs.outputs.workspace }}
+          path: workspace
+          persist-credentials: false
+
+      - name: Checkout packaging revision
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.refs.outputs.packaging }}
+          path: workspace/debian-piano
+          persist-credentials: false
+
+      - name: Checkout matching kernel source
+        uses: actions/checkout@v5
+        with:
+          repository: blu-sharky/linux-piano
+          ref: ${{ steps.refs.outputs.kernel }}
+          path: workspace/linux-piano
+          persist-credentials: false
+
+      - name: Checkout piano firmware
+        uses: actions/checkout@v5
+        with:
+          repository: blu-sharky/piano-firmware
+          ref: ${{ steps.refs.outputs.firmware }}
+          path: workspace/piano-firmware
+          persist-credentials: false
+
+      - name: Checkout piano Mesa
+        uses: actions/checkout@v5
+        with:
+          repository: blu-sharky/piano-mesa
+          ref: ${{ steps.refs.outputs.mesa }}
+          path: workspace/piano-mesa
+          persist-credentials: false
+
+      - name: Checkout piano sensors
+        uses: actions/checkout@v5
+        with:
+          repository: blu-sharky/piano-sensors
+          ref: ${{ steps.refs.outputs.sensors }}
+          path: workspace/piano-sensors
+          persist-credentials: false
+
+      - name: Checkout piano MiPPS authentication
+        uses: actions/checkout@v5
+        with:
+          repository: blu-sharky/piano-mipps-auth
+          ref: ${{ steps.refs.outputs.mipps }}
+          path: workspace/piano-mipps-auth
+          persist-credentials: false
+
+      # m4 macro library for the piano AudioReach topology (BSD-3-Clause),
+      # pinned so that the topology binary is reproducible.
+      - name: Checkout AudioReach topology macros
+        uses: actions/checkout@v5
+        with:
+          repository: linux-msm/audioreach-topology
+          ref: 993a17dcb672357998a463a73f120064d6c74f4f
+          path: workspace/audioreach-topology
+          persist-credentials: false
+
+      # Loopback video devices (GPL-2.0) that piano-camerad feeds with the
+      # hardware ISP output, built against the image kernel; pinned to v0.15.4.
+      - name: Checkout v4l2loopback
+        uses: actions/checkout@v5
+        with:
+          repository: umlaeute/v4l2loopback
+          ref: 0f9ee86760b7f2bea174b7e3e7a1d38845da0ab4
+          path: workspace/v4l2loopback
+          persist-credentials: false
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              clang lld llvm ccache make flex bison bc libssl-dev libelf-dev \
+              rsync cpio kmod device-tree-compiler debootstrap \
+              debian-archive-keyring curl openssh-client openssl \
+              e2fsprogs python3 zstd xz-utils lz4 m4 alsa-utils
+          df -h "$GITHUB_WORKSPACE"
+
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: piano-gnome-clang-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            piano-gnome-clang-${{ runner.os }}-${{ runner.arch }}-
+
+      # Mesa shares the compiler cache with the kernel build (one cache,
+      # one save below); piano-mesa's own CI keeps a separate one.
+      - name: Build piano Mesa
+        working-directory: workspace
+        run: |
+          piano-mesa/scripts/build-in-container.sh out/mesa "$CCACHE_DIR"
+          echo "piano-mesa $(git -C piano-mesa rev-parse HEAD)" > out/mesa/SOURCE
+
+      - name: Build piano sensors packages
+        working-directory: workspace
+        run: |
+          piano-sensors/scripts/build-in-container.sh out/sensors
+          echo "piano-sensors $(git -C piano-sensors rev-parse HEAD)" > out/sensors/SOURCE
+
+      # Architecture-independent script package (dpkg-deb only); it joins
+      # the piano-sensors packages in the userspace set of the rootfs.
+      - name: Build piano MiPPS authentication package
+        working-directory: workspace
+        run: |
+          mkdir -p out/userspace
+          cp out/sensors/runtime/*.deb out/userspace/
+          piano-mipps-auth/build-deb.sh "$PWD/out/userspace/xiaomi-mipps-auth.deb"
+          echo "piano-mipps-auth $(git -C piano-mipps-auth rev-parse HEAD)" > out/userspace/SOURCE
+
+      - name: Build matched GNOME image set with piano-firmware
+        working-directory: workspace
+        env:
+          SSH_PUBLIC_KEY: ${{ vars.PIANO_SSH_PUBLIC_KEY }}
+        run: |
+          test -f linux-piano/arch/arm64/configs/piano_rootfs.config
+          test -x scripts/build-rootfs-image.sh
+          ccache --zero-stats
+          mkdir -p out
+          key_args=()
+          if [ -n "$SSH_PUBLIC_KEY" ]; then
+            printf '%s\n' "$SSH_PUBLIC_KEY" > out/authorized_keys
+            key_args=(--authorized-keys "$PWD/out/authorized_keys")
+          fi
+          debian-piano/scripts/fetch-arm64-tools.sh --output-dir out/arm64-tools
+          scripts/build-rootfs-image.sh --firmware-tree piano-firmware/firmware \
+              --mesa-dir out/mesa/runtime \
+              --sensors-dir out/userspace \
+              --audioreach-topology audioreach-topology \
+              --v4l2loopback v4l2loopback \
+              --jobs "$(nproc)" --output debian-piano/out/ci-image "${key_args[@]}"
+          {
+            cat out/mesa/SOURCE
+            cat out/sensors/SOURCE
+            cat out/userspace/SOURCE
+            echo "audioreach-topology $(git -C audioreach-topology rev-parse HEAD)"
+            echo "v4l2loopback $(git -C v4l2loopback rev-parse HEAD)"
+            echo 'Firmware comes from blu-sharky/piano-firmware; see its README compliance statement.'
+            if [ -z "$SSH_PUBLIC_KEY" ]; then
+              echo 'Access: per-build random key; private half published in the piano-access-key artifact.'
+            fi
+          } >> debian-piano/out/ci-image/MANIFEST.txt
+
+      - name: Package flashable set and rootfs tarball
+        working-directory: workspace/debian-piano
+        run: |
+          # The raw ext4 is only a local inspection aid; never ship it.
+          rm -f out/ci-image/userdata.raw.img
+          # Cold boots from boot_b need a signed AVB footer (stock vbmeta
+          # chains boot); RAM boots accept the padded image unchanged.
+          scripts/sign-boot-avb.sh out/ci-image/boot.img
+          echo "boot.img: AVB-signed after build; flashed sha256 $(sha256sum out/ci-image/boot.img | cut -d' ' -f1)" >> out/ci-image/MANIFEST.txt
+          mkdir -p out/bundle out/rootfs-tar
+          zstd -T0 -10 --rm out/ci-image/userdata.img -o out/bundle/userdata.img.zst
+          cp out/ci-image/boot.img out/ci-image/dtbo.img \
+              out/ci-image/kernel.config out/ci-image/packages.txt \
+              out/ci-image/MANIFEST.txt out/ci-image/SOURCE-SHA256SUMS out/bundle/
+          (cd out/bundle && sha256sum ./* > SHA256SUMS)
+          sudo tar --numeric-owner --xattrs --acls -C out/ci-image/rootfs \
+              -I 'zstd -T0 -3' -cf out/rootfs-tar/rootfs-trixie-gnome-arm64.tar.zst .
+          (cd out/rootfs-tar && sha256sum ./* > SHA256SUMS)
+          du -sh out/bundle/* out/rootfs-tar/*
+
+      - name: Publish ephemeral access key
+        if: ${{ vars.PIANO_SSH_PUBLIC_KEY == '' }}
+        working-directory: workspace/debian-piano
+        run: |
+          mkdir -p out/access-key
+          cp out/ci-image/access-key out/ci-image/access-key.pub out/access-key/
+          {
+            echo '## Ephemeral SSH access key'
+            echo 'This build generated a fresh random key (no PIANO_SSH_PUBLIC_KEY variable set).'
+            echo "Private half: piano-access-key-$GITHUB_SHA artifact. Then:"
+            echo '```'
+            echo 'chmod 600 access-key'
+            echo 'ssh -i access-key piano@10.42.0.2'
+            echo '```'
+            echo 'Public key (authorized in this image):'
+            echo '```'
+            cat out/ci-image/access-key.pub
+            ssh-keygen -lf out/ci-image/access-key.pub
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats
+
+      # Every save is a new ~2 GB entry (the key carries the run id) and
+      # the repository's cache quota is 10 GB, evicted least recently used.
+      # Keep one entry per ref: without this a few runs on one branch evict
+      # main's entry, which is the shared restore source of every branch
+      # (a run can only restore its own ref's caches and the default
+      # branch's).
+      - name: Prune this ref's older compiler caches
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh cache list --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF" \
+            --key piano-gnome-clang- --limit 100 --json id --jq '.[].id' |
+            xargs -r -n1 gh cache delete --repo "$GITHUB_REPOSITORY"
+
+      # Saved even when the build fails, so a retry starts warm.
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: piano-gnome-clang-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload flashable boot, dtbo and userdata set
+        uses: actions/upload-artifact@v4
+        with:
+          name: piano-gnome-flash-${{ github.sha }}
+          path: workspace/debian-piano/out/bundle/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload rootfs tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: piano-gnome-rootfs-${{ github.sha }}
+          path: workspace/debian-piano/out/rootfs-tar/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload ephemeral access key
+        if: ${{ vars.PIANO_SSH_PUBLIC_KEY == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: piano-access-key-${{ github.sha }}
+          path: workspace/debian-piano/out/access-key/
+          if-no-files-found: error
+          retention-days: 7

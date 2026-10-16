@@ -1,0 +1,93 @@
+# Bring-up and everyday tools.
+# Debian trixie arm64; one package per line, main only.
+# GNOME on simpledrm, with Mesa software rendering.
+alsa-ucm-conf
+alsa-utils
+at-spi2-core
+bash
+bc
+bind9-dnsutils
+bluez
+bzip2
+ca-certificates
+console-setup
+coreutils
+curl
+dbus-user-session
+dconf-cli
+debconf
+dosfstools
+e2fsprogs
+evolution-data-server
+evtest
+fdisk
+file
+firefox-esr
+fonts-dejavu
+fonts-noto-cjk
+gdm3
+git
+gnome-control-center
+gnome-session
+gnome-settings-daemon
+gnome-shell
+gnome-system-monitor
+gnome-terminal
+gnome-text-editor
+# GStreamer players decode on the Iris codec through the V4L2 stateful
+# decoders (plugins-good) and need the stream parsers from plugins-bad.
+gstreamer1.0-plugins-bad
+gstreamer1.0-plugins-good
+# gst-launch-1.0 for checking the codec from a shell.
+gstreamer1.0-tools
+htop
+ibus
+ibus-libpinyin
+iproute2
+iputils-ping
+iw
+kmod
+less
+# Firefox decodes H.264 and AAC video with the system FFmpeg.
+libavcodec61
+libdrm-tests
+libgl1-mesa-dri
+libglib2.0-bin
+libinput-tools
+libxcb-keysyms1
+locales
+mesa-utils
+mesa-utils-bin
+nano
+nautilus
+network-manager
+openssh-server
+parted
+pciutils
+pipewire-audio
+procps
+psmisc
+python3
+# Marks the booted A/B slot successful so ABL keeps slot b bootable.
+qbootctl
+rsync
+strace
+sudo
+systemd-sysv
+# zram swap, configured in /etc/systemd/zram-generator.conf.
+systemd-zram-generator
+systemd-timesyncd
+tzdata
+udev
+usbutils
+util-linux
+v4l-utils
+vim-tiny
+wget
+wireless-regdb
+wpasupplicant
+xserver-xorg-core
+xserver-xorg-input-libinput
+xwayland
+xz-utils
+zstd

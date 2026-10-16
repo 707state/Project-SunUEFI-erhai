@@ -1,5 +1,5 @@
 private/
-upstream/
+# upstream trees are now plain sources (formerly submodules)
 .venv/
 build/
 artifacts/
@@ -16,3 +16,8 @@ boot_b.img
 boot_a.img
 *.boot.img
 erhai-live.dtb
+# local working GPT blobs
+gpt_entries.bin
+gpt_header.bin
+gpt_now.bin
+# bare captures moved into vendor/erhai/captures/ (tracked)

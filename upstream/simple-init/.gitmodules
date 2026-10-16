@@ -1,0 +1,4 @@
+[submodule "libs/freetype"]
+	path = libs/freetype
+	url = https://github.com/freetype/freetype.git
+	ignore = dirty

@@ -1,0 +1,50 @@
+piano-sensors (5) trixie; urgency=medium
+
+  * Start adsprpcd-sensorspd as ready only once libssc finds the
+    accelerometer, light, proximity and compass sensors (at most 60 s):
+    the PD publishes them one by one after adsprpcd attaches, and
+    iio-sensor-proxy, which looks each one up once, came up with the
+    accelerometer only.
+
+ -- piano mainline contributors <piano@localhost>  Wed, 30 Sep 2026 23:00:00 +0800
+
+piano-sensors (4) trixie; urgency=medium
+
+  * Import the odm JSON sensor configuration again, and link
+    /odm/etc/sensors/config to it: after every ADSP start the sensors PD
+    reads json.lst first and gives up without it, even with a valid
+    registry on persist. Version 3 only worked on an ADSP that had already
+    read its configuration.
+
+ -- piano mainline contributors <piano@localhost>  Wed, 30 Sep 2026 20:00:00 +0800
+
+piano-sensors (3) trixie; urgency=medium
+
+  * Serve the sensors PD with adsprpcd (Qualcomm FastRPC, Debian
+    fastrpc-support) instead of a patched hexagonrpcd: it implements the
+    remote file calls the PD makes, and opens its paths as they are.
+  * With a valid registry on persist the PD does not read the odm JSON
+    configuration: import persist only, drop the super/odm import.
+  * Override fastrpc-support's udev rule that starts every remote
+    processor, and mask its root PD and audio PD daemons.
+
+ -- piano mainline contributors <piano@localhost>  Wed, 30 Sep 2026 00:30:00 +0800
+
+piano-sensors (2) trixie; urgency=medium
+
+  * Read odm_a from the super partition: it is a dynamic partition with
+    no partition label of its own, so the import waited for it forever.
+  * Do not order the import after block device units, and drop the
+    xiaomi,piano firmware condition: ABL boots the stock tree, whose
+    compatible is qcom,sun.
+  * Conflict with droid-juicer, which hexagonrpcd recommends: it spins
+    on piano and holds the display manager back.
+
+ -- piano mainline contributors <piano@localhost>  Tue, 29 Sep 2026 23:50:00 +0800
+
+piano-sensors (1) trixie; urgency=medium
+
+  * Initial release: sensors PD inputs imported from the device's own
+    partitions, hexagonrpcd and iio-sensor-proxy set up for piano.
+
+ -- piano mainline contributors <piano@localhost>  Tue, 29 Sep 2026 22:00:00 +0800

@@ -1,0 +1,5 @@
+# Keep the piano builds: stock iio-sensor-proxy misses SSC claims made while
+# its driver opens, and trixie has no libssc.
+Package: src:libssc src:iio-sensor-proxy
+Pin: version *+piano*
+Pin-Priority: 1001
