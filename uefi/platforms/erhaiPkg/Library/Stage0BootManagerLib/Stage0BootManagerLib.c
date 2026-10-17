@@ -130,6 +130,7 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
     UINTN FsCount = 0;
     EFI_STATUS FsStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
                                                     NULL, &FsCount, &FsHandles);
+    if (gST != NULL && gST->ConOut != NULL) Print (L"ESP scan: %u filesystems (%r)\r\n", (UINT32)FsCount, FsStatus);
     if (!EFI_ERROR (FsStatus) && FsHandles != NULL) {
       for (UINTN I = 0; I < FsCount; I++) {
         EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
@@ -137,11 +138,13 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
         if (EFI_ERROR (gBS->HandleProtocol (FsHandles[I], &gEfiSimpleFileSystemProtocolGuid,
                                             (VOID **)&Fs)) || Fs == NULL ||
             EFI_ERROR (Fs->OpenVolume (Fs, &Root)) || Root == NULL) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: open failed\r\n", (UINT32)(I + 1));
           continue;
         }
         EFI_STATUS OpenStatus = Root->Open (Root, &File, L"\\EFI\\BOOT\\BOOTAA64.EFI",
                                            EFI_FILE_MODE_READ, 0);
         if (EFI_ERROR (OpenStatus) || File == NULL) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: no BOOTAA64 (%r)\r\n", (UINT32)(I + 1), OpenStatus);
           Root->Close (Root);
           continue;
         }
