@@ -7,6 +7,7 @@
 #include <Library/DebugLib.h>
 #include <Protocol/GraphicsOutput.h>
 #include <Library/UefiBootManagerLib.h>
+#include <Library/DevicePathLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/SimpleFileSystem.h>
 #include <Protocol/LoadedImage.h>
@@ -182,7 +183,15 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
         File->Close (File);
         Root->Close (Root);
         EFI_HANDLE Image = NULL;
-        EFI_STATUS LoadStatus = gBS->LoadImage (FALSE, FsHandles[I], NULL, Kernel, (UINTN)Bytes, &Image);
+        // ParentImageHandle must be OUR image handle (the DXE core validates it
+        // is a loaded image; passing the filesystem handle returned INVALID_PARAMETER).
+        // The file device path lets the EFI stub resolve dtb=/initrd= relative to
+        // this volume at StartImage time.
+        EFI_DEVICE_PATH_PROTOCOL *KernelPath = FileDevicePath (FsHandles[I], L"\\EFI\\BOOT\\BOOTAA64.EFI");
+        EFI_STATUS LoadStatus = gBS->LoadImage (FALSE, gImageHandle, KernelPath, Kernel, (UINTN)Bytes, &Image);
+        if (KernelPath != NULL) {
+          FreePool (KernelPath);
+        }
         if (gST != NULL && gST->ConOut != NULL) {
           Print (L"ESP kernel: %lu bytes, LoadImage %r\r\n", (UINT64)Bytes, LoadStatus);
         }
