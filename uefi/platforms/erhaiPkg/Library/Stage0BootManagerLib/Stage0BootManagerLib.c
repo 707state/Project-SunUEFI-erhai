@@ -153,7 +153,10 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
         EFI_FILE_INFO *Info = NULL;
         UINTN InfoSize = 0;
         EFI_STATUS InfoStatus = File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, NULL);
-        if (EFI_ERROR (InfoStatus) || InfoSize == 0) {
+        // First call with zero size legitimately returns EFI_BUFFER_TOO_SMALL and
+        // fills InfoSize with the required buffer size — that is the query pattern,
+        // not a failure. Only a missing/zero size after the call is fatal.
+        if ((EFI_ERROR (InfoStatus) && InfoStatus != EFI_BUFFER_TOO_SMALL) || InfoSize == 0) {
           if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: GetInfo(size) failed %r\r\n", (UINT32)(I + 1), InfoStatus);
           File->Close (File); Root->Close (Root); continue;
         }
