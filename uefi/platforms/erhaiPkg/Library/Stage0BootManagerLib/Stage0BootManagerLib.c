@@ -149,21 +149,31 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
           continue;
         }
         // Read the whole kernel image.
+        if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: BOOTAA64 found, reading\r\n", (UINT32)(I + 1));
         EFI_FILE_INFO *Info = NULL;
         UINTN InfoSize = 0;
-        if (EFI_ERROR (File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, NULL)) ||
-            InfoSize == 0) { File->Close (File); Root->Close (Root); continue; }
+        EFI_STATUS InfoStatus = File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, NULL);
+        if (EFI_ERROR (InfoStatus) || InfoSize == 0) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: GetInfo(size) failed %r\r\n", (UINT32)(I + 1), InfoStatus);
+          File->Close (File); Root->Close (Root); continue;
+        }
         Info = AllocatePool (InfoSize);
         if (Info == NULL ||
-            EFI_ERROR (File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, Info))) {
+            EFI_ERROR (InfoStatus = File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, Info))) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: GetInfo failed %r\r\n", (UINT32)(I + 1), InfoStatus);
           if (Info != NULL) FreePool (Info);
           File->Close (File); Root->Close (Root); continue;
         }
         UINTN Bytes = (UINTN)Info->FileSize;
         FreePool (Info);
+        if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: kernel is %lu bytes\r\n", (UINT32)(I + 1), (UINT64)Bytes);
         VOID *Kernel = AllocatePool (Bytes);
-        if (Kernel == NULL) { File->Close (File); Root->Close (Root); continue; }
-        if (EFI_ERROR (File->Read (File, &Bytes, Kernel)) || Bytes == 0) {
+        if (Kernel == NULL) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: alloc failed\r\n", (UINT32)(I + 1));
+          File->Close (File); Root->Close (Root); continue;
+        }
+        if (EFI_ERROR (InfoStatus = File->Read (File, &Bytes, Kernel)) || Bytes == 0) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: Read failed %r (%lu bytes)\r\n", (UINT32)(I + 1), InfoStatus, (UINT64)Bytes);
           FreePool (Kernel); File->Close (File); Root->Close (Root); continue;
         }
         File->Close (File);

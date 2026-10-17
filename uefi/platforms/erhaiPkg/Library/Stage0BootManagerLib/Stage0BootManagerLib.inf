@@ -22,3 +22,7 @@
   gEfiBlockIoProtocolGuid
   gEfiSimpleFileSystemProtocolGuid
   gEfiDevicePathProtocolGuid
+
+[Guids]
+  gEfiFileInfoGuid
+  gEfiEventExitBootServicesGuid
