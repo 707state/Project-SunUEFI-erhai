@@ -112,6 +112,10 @@ fastboot boot artifacts/erhai/ErhaiUEFI-stage0.img
 Android（设计行为；stage-0 没有可启动 OS）。启动较慢（每条 UFS 读都有
 doorbell 轮询）属正常。
 
+如果 ESP 里已经有内核（`\EFI\BOOT\BOOTAA64.EFI`），BDS 在没有 `Boot####`
+时会把 PlatformRecovery 默认项展开到该文件并直接启动，45 秒自动重启不再
+触发。内核、DTB 和 initramfs 的放置方式见第六节。
+
 ### 常驻 slot A（日常使用）
 
 ```sh
@@ -137,26 +141,114 @@ fastboot reboot
 ## 五、当前边界（诚实清单）
 
 - BlockIO 只读（写一律 `EFI_WRITE_PROTECTED`）；有界写窗口未移植
-- Linux 内核未完成（erhai DTS 骨架在 `linux/dts/erhai/`，内核配置片段
-  `linux/configs/erhai-first-boot.config`，构建流程见下节方向）
-- ESP 里尚无内核/initramfs；BDS 45 秒自动重启是设计行为
+- 内核已用 LLVM 在 macOS 上编出（`Image` 与
+  `sm8750-oneplus-erhai.dtb`，见第六节），尚未实机启动验证
+- ESP 里尚无内核/initramfs；放入后 BDS 会走 PlatformRecovery 启动。
+  45 秒自动重启只在没有可启动镜像时触发
+- erhai DTS 仍是 first-boot 骨架：只有 UART7、UFS、USB，没有显示、触摸、
+  电源、音频、WLAN/BT
 - 刷 slot A 后 Android 侧 `/data` 缩小 ~8.5 GB；删除分区归还空间需要手动
   扩容（OxygenOS 的 fs_mgr 可能没有小米的 F2FS 自动扩容补丁）
 - 内核源码树在 `upstream/linux-piano`（现已直接入库），erhai 板文件
   `arch/arm64/boot/dts/qcom/sm8750-oneplus-erhai.dts`
 
-## 六、内核构建（进行中，备忘）
+## 六、内核构建（macOS 原生 LLVM，已编译通过）
 
-macOS 原生构建的已知障碍：内核 HOST 工具需要 glibc 头（`elf.h`、
-`byteswap.h` 等），macOS 没有。可行路径：
-1. podman 容器（`build/container/kernel-builder.Containerfile`，Debian +
-   build-essential；podman VM 内存需 ≥4 GiB）
-2. 或任意 Linux 机器/CI 上直接 `make ARCH=arm64` 用 gcc
+本节记录在当前 macOS/ARM64 工作站上的实际构建路径。产物是主机编译结果，
+尚未实机启动验证。
 
-内核 DTS 已能在 mac 上单独构建（`qcom/sm8750-oneplus-erhai.dtb`，
-需 gmake + llvm）。配置：`piano_defconfig` +
-`linux/configs/erhai-first-boot.config` 合并（EFI stub / UFS / GENI 串口 /
-ext4 根 / USB）。
+### 配置要点
+
+`linux/configs/erhai-first-boot.config` 合并到 `piano_defconfig` 之上：
+
+- `console=ttyMSM0`。GENI 驱动注册的控制台名是 `ttyMSM`，不是 `ttyMS0`。
+- `CONFIG_CMDLINE_FROM_BOOTLOADER=y`，并显式取消 `CONFIG_CMDLINE_FORCE`。
+  `piano_defconfig` 自带 `CMDLINE_FORCE=y`，不清掉会覆盖 erhai 的命令行。
+- 命令行里的 `dtb=EFI/BOOT/erhai.dtb` 和 `initrd=EFI/BOOT/initramfs.cpio.gz`
+  是相对 FAT 卷根的路径；EFI stub 从内核所在的 ESP 读取它们。
+- `root=LABEL=sunuefi_root`。GPT 脚本没有写分区唯一 GUID，`PARTUUID=` 不可用。
+- UFS 依赖全部内建：`SCSI_UFS_QCOM`、`PHY_QCOM_QMP_UFS`、`PINCTRL_SM8750`。
+  这些在 `piano_defconfig` 里是模块，不配 initramfs 模块时根分区挂不上。
+
+### 主机依赖与兼容层
+
+```sh
+brew install llvm make gnu-sed openssl@3
+```
+
+macOS 原生构建需要三个只存在于 `build/` 的兼容层（`build/` 不入库）：
+
+| 文件 | 用途 |
+| --- | --- |
+| `build/host-include-macos/elf.h` | glibc 的 `elf.h` 拷贝，`scripts/mod` 需要 |
+| `build/host-include-macos/byteswap.h` | 用 `__builtin_bswap{16,32,64}` 实现 |
+| `build/host-include-macos/host-macos-compat.h` | `O_LARGEFILE=0` 与 `copy_file_range` 的 pread/pwrite 回退，供 `usr/gen_init_cpio` |
+
+另外，Darwin 的 `<sys/types.h>` 已经定义了 `uuid_t`，会与
+`scripts/mod/file2alias.c` 的局部 typedef 冲突。仓库里的补丁
+`patches/linux/macos-host-tools.patch` 在 `__APPLE__` 下换用
+`linux_uuid_t`。在干净源码树上先应用：
+
+```sh
+patch -p1 -d upstream/linux-piano < patches/linux/macos-host-tools.patch
+```
+
+### 构建命令
+
+```sh
+export PATH=/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/make/libexec/gnubin:/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH
+O=$PWD/build/kernels/erhai-first
+K="gmake -C upstream/linux-piano O=$O ARCH=arm64 LLVM=1 LLVM_IAS=1 CROSS_COMPILE=aarch64-linux-gnu-"
+
+$K piano_defconfig
+
+# merge_config.sh 在 macOS 上需要 GNU readlink -m；没有 coreutils 时直接追加，
+# kconfig 以最后出现的值为准。
+cat $O/.config linux/configs/erhai-first-boot.config > $O/.config.merged
+mv $O/.config.merged $O/.config
+$K olddefconfig
+
+HOSTCFLAGS="-I$PWD/build/host-include-macos -I/opt/homebrew/opt/openssl@3/include -include $PWD/build/host-include-macos/host-macos-compat.h" \
+HOSTLDFLAGS="-L/opt/homebrew/opt/openssl@3/lib -Wl,-rpath,/opt/homebrew/opt/openssl@3/lib" \
+  $K -j"$(sysctl -n hw.ncpu)" Image dtbs
+```
+erhai Linux构建命令
+```
+export PATH=/opt/homebrew/opt/llvm/bin:/opt/homebrew/opt/make/libexec/gnubin:/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH
+O=$PWD/build/kernels/erhai-first
+HOSTCFLAGS="-I$PWD/build/host-include-macos -I/opt/homebrew/opt/openssl@3/include -include
+$PWD/build/host-include-macos/host-macos-compat.h" \
+HOSTLDFLAGS="-L/opt/homebrew/opt/openssl@3/lib -Wl,-rpath,/opt/homebrew/opt/openssl@3/lib" \
+  gmake -C upstream/linux-piano O=$O ARCH=arm64 LLVM=1 LLVM_IAS=1 \
+        CROSS_COMPILE=aarch64-linux-gnu- -j12 Image dtbs
+```
+说明：`CONFIG_SYSTEM_TRUSTED_KEYRING=y` 会构建 `certs/extract-cert`，所以需要
+OpenSSL 头文件和库路径；`-include` 的兼容头只作用于 host 工具。
+
+### 产物与校验
+
+| 产物 | 实际结果 |
+| --- | --- |
+| `build/kernels/erhai-first/arch/arm64/boot/Image` | 约 50 MiB，ARM64 + PE32+ EFI stub |
+| `build/kernels/erhai-first/arch/arm64/boot/dts/qcom/sm8750-oneplus-erhai.dtb` | 约 114 KiB，`oneplus,erhai` / `qcom,sm8750` |
+
+`tools/build_kernel.py` 的 `image_info()` 对 `Image` 的检查结果是
+`arm64_magic=true`、`efi_stub=true`。内核 release 为 `7.2.6`（piano 基线，
+不是 `7.2.9` 发布 pin）。
+
+### Linux 容器回退
+
+没有 macOS 兼容层时，用完整构建镜像 `containers/Dockerfile`
+（含 `gcc-aarch64-linux-gnu`、`mtools`、`e2fsprogs`）：
+
+```sh
+docker build -t sunuefi-builder -f containers/Dockerfile .
+docker run --rm -it --privileged -v "$PWD:/workspace" -w /workspace sunuefi-builder bash
+```
+
+容器里把上面的 `LLVM=1 LLVM_IAS=1` 换成 `CROSS_COMPILE=aarch64-linux-gnu-`，
+并去掉 `HOSTCFLAGS`/`HOSTLDFLAGS` 和 macOS 补丁。`dtbs` 在 Linux 上不需要
+额外的 `sed` 或 `readlink` 兼容处理。
 
 ## 附：仓库布局速览
 

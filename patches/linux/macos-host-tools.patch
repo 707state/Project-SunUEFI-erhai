@@ -1,0 +1,26 @@
+diff --git a/scripts/mod/file2alias.c b/scripts/mod/file2alias.c
+index 8d36c74de..35f5616a4 100644
+--- a/scripts/mod/file2alias.c
++++ b/scripts/mod/file2alias.c
+@@ -107,9 +107,21 @@ typedef struct {
+ 	__u8 b[16];
+ } guid_t;
+ 
++#ifdef __APPLE__
++/*
++ * Darwin's <sys/types.h> already defines uuid_t as unsigned char[16], and
++ * hiding it breaks headers that declare gethostuuid(). Keep the kernel's
++ * struct layout under another name and map the device-id field to it.
++ */
++typedef struct {
++	__u8 b[16];
++} linux_uuid_t;
++#define uuid_t linux_uuid_t
++#else
+ typedef struct {
+ 	__u8 b[16];
+ } uuid_t;
++#endif
+ 
+ #define	UUID_STRING_LEN		36
+ 
