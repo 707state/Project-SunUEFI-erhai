@@ -9,6 +9,8 @@
 #include <Library/UefiBootManagerLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/SimpleFileSystem.h>
+#include <Protocol/LoadedImage.h>
+#include <Guid/FileInfo.h>
 #include <Protocol/DevicePath.h>
 #include <Library/MemoryAllocationLib.h>
 
@@ -118,8 +120,76 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
   }
   if (gST != NULL && gST->ConOut != NULL) Print (L"Stage 0 diagnostic: DXE and console reached, EL%u\r\n", (UINT32)(CurrentEl >> 2));
   DEBUG ((DEBUG_WARN, "ERHAI_STAGE0_STORAGE_ENUM_DONE\n"));
-  if (gST != NULL && gST->ConOut != NULL) Print (L"Internal storage and USB mass-storage drivers are excluded.\r\n");
-  if (gST != NULL && gST->ConOut != NULL) Print (L"Linux and Windows PE boot are not implemented in this image.\r\n");
+  if (gST != NULL && gST->ConOut != NULL) Print (L"Storage stack active. Attempting ESP kernel launch.\r\n");
+  {
+    // Direct boot of the ESP kernel (EFI stub): enumerate SimpleFileSystem, look for
+    // \EFI\BOOT\BOOTAA64.EFI, LoadImage + StartImage. This is the erhai
+    // equivalent of piano's controlled handoff — done at the designed BDS moment
+    // after all drivers are connected.
+    EFI_HANDLE *FsHandles = NULL;
+    UINTN FsCount = 0;
+    EFI_STATUS FsStatus = gBS->LocateHandleBuffer (ByProtocol, &gEfiSimpleFileSystemProtocolGuid,
+                                                    NULL, &FsCount, &FsHandles);
+    if (!EFI_ERROR (FsStatus) && FsHandles != NULL) {
+      for (UINTN I = 0; I < FsCount; I++) {
+        EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs = NULL;
+        EFI_FILE_PROTOCOL *Root = NULL, *File = NULL;
+        if (EFI_ERROR (gBS->HandleProtocol (FsHandles[I], &gEfiSimpleFileSystemProtocolGuid,
+                                            (VOID **)&Fs)) || Fs == NULL ||
+            EFI_ERROR (Fs->OpenVolume (Fs, &Root)) || Root == NULL) {
+          continue;
+        }
+        EFI_STATUS OpenStatus = Root->Open (Root, &File, L"\\EFI\\BOOT\\BOOTAA64.EFI",
+                                           EFI_FILE_MODE_READ, 0);
+        if (EFI_ERROR (OpenStatus) || File == NULL) {
+          Root->Close (Root);
+          continue;
+        }
+        // Read the whole kernel image.
+        EFI_FILE_INFO *Info = NULL;
+        UINTN InfoSize = 0;
+        if (EFI_ERROR (File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, NULL)) ||
+            InfoSize == 0) { File->Close (File); Root->Close (Root); continue; }
+        Info = AllocatePool (InfoSize);
+        if (Info == NULL ||
+            EFI_ERROR (File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, Info))) {
+          if (Info != NULL) FreePool (Info);
+          File->Close (File); Root->Close (Root); continue;
+        }
+        UINTN Bytes = (UINTN)Info->FileSize;
+        FreePool (Info);
+        VOID *Kernel = AllocatePool (Bytes);
+        if (Kernel == NULL) { File->Close (File); Root->Close (Root); continue; }
+        if (EFI_ERROR (File->Read (File, &Bytes, Kernel)) || Bytes == 0) {
+          FreePool (Kernel); File->Close (File); Root->Close (Root); continue;
+        }
+        File->Close (File);
+        Root->Close (Root);
+        EFI_HANDLE Image = NULL;
+        EFI_STATUS LoadStatus = gBS->LoadImage (FALSE, FsHandles[I], NULL, Kernel, (UINTN)Bytes, &Image);
+        if (gST != NULL && gST->ConOut != NULL) {
+          Print (L"ESP kernel: %lu bytes, LoadImage %r\r\n", (UINT64)Bytes, LoadStatus);
+        }
+        if (EFI_ERROR (LoadStatus)) {
+          FreePool (Kernel);
+          continue;
+        }
+        // Set the kernel command line via LoadedImage device path convention:
+        // the EFI stub picks up cmdline from the optional data of the load option.
+        // Simplest supported path: set it via gRT->SetVariable(L"KernelCmdline"...)
+        // is nonstandard; instead the stub reads it from the FDT /chosen/bootargs
+        // which our DTB provides. Boot now.
+        if (gST != NULL && gST->ConOut != NULL) Print (L"Starting kernel...\r\n");
+        EFI_STATUS StartStatus = gBS->StartImage (Image, NULL, NULL);
+        if (gST != NULL && gST->ConOut != NULL) {
+          Print (L"StartImage returned %r\r\n", StartStatus);
+        }
+        FreePool (Kernel);
+        break;
+      }
+      gBS->FreePool (FsHandles);
+    }
+  }
   if (!EFI_ERROR (Status) && Gop != NULL && Gop->Mode != NULL && Gop->Mode->Info != NULL) {
     if (gST != NULL && gST->ConOut != NULL) Print (L"GOP %ux%u, stride %u, framebuffer 0x%lx\r\n",
       Gop->Mode->Info->HorizontalResolution, Gop->Mode->Info->VerticalResolution,

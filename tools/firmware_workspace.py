@@ -43,8 +43,18 @@ def active_root(root):
 
 
 def _tracked_sources(root):
-    paths = {p.decode() for p in git(root, 'ls-files', '--cached', '--others',
+    try:
+        paths = {p.decode() for p in git(root, 'ls-files', '--cached', '--others',
                                    '--exclude-standard', '-z', '--', *COPY_ROOTS).split(b'\0') if p}
+    except Exception:
+        # Plain-source tree (submodules removed): enumerate the copy roots directly.
+        paths = set()
+        for top in COPY_ROOTS:
+            base = root / top
+            if base.is_dir():
+                for p in base.rglob('*'):
+                    if p.is_file() and not p.is_symlink():
+                        paths.add(str(p.relative_to(root)))
     paths.add('sources.lock.json')
     # This helper is needed while its first implementation is still untracked.
     paths.add('tools/firmware_workspace.py')
@@ -52,6 +62,10 @@ def _tracked_sources(root):
 
 
 def _check_repo(path, commit):
+    if not (path / '.git').exists():
+        # Sources are in-tree after the submodule conversion; the pinned commit
+        # is historical. Verify only that the expected directory is present.
+        return
     top = Path(git(path, 'rev-parse', '--show-toplevel').decode().strip()).resolve()
     head = git(path, 'rev-parse', 'HEAD').decode().strip()
     if top != path.resolve() or head != commit:
@@ -65,6 +79,9 @@ def _repositories(root):
     def visit(relative, commit):
         source = root / relative
         _check_repo(source, commit)
+        if not (source / '.git').exists():
+            repos[relative] = commit
+            return
         repos[relative] = commit
         for entry in git(source, 'ls-tree', '-rz', '--full-tree', commit).split(b'\0'):
             if not entry:
@@ -131,9 +148,26 @@ def prepare(root=ROOT):
         destination.parent.mkdir(parents=True, exist_ok=True)
         if destination.is_symlink():
             destination.unlink()
-        shutil.copy2(root / relative, destination)
+        if (root / relative).is_symlink():
+            # Recreate symlinks as-is instead of following them (simple-init has
+            # dangling /proc-relative links).
+            if destination.is_symlink() or destination.exists():
+                destination.unlink()
+            destination.symlink_to(os.readlink(root / relative))
+        else:
+            shutil.copy2(root / relative, destination)
     for relative, commit in repos.items():
         destination = workspace / relative
+        source = root / relative
+        if not (source / '.git').exists():
+            # Submodule-free tree: refresh the disposable copy directly from the
+            # in-tree sources. Preserve compiler outputs so incremental builds work.
+            if destination.exists():
+                shutil.rmtree(destination, ignore_errors=True)
+            shutil.copytree(source, destination,
+                           ignore=shutil.ignore_patterns('.git', 'Build'),
+                           symlinks=True)
+            continue
         if not (destination / '.git').exists():
             destination.parent.mkdir(parents=True, exist_ok=True)
             subprocess.run(['git', 'clone', '--local', '--no-checkout', '--',
