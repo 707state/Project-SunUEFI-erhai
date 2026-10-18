@@ -11,19 +11,25 @@
   MdePkg/MdePkg.dec
   MdeModulePkg/MdeModulePkg.dec
   MsCorePkg/MsCorePkg.dec
+  SiliciumPkg/SiliciumPkg.dec
 [LibraryClasses]
   UefiLib
   UefiBootManagerLib
   DevicePathLib
   FdtLib
+  MemoryMapLib
   UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
   DebugLib
+  BaseLib
+  CacheMaintenanceLib
 [Protocols]
   gEfiGraphicsOutputProtocolGuid
   gEfiBlockIoProtocolGuid
   gEfiSimpleFileSystemProtocolGuid
   gEfiDevicePathProtocolGuid
+  gEfiWatchdogTimerArchProtocolGuid
+  gEfiTimerArchProtocolGuid
 
 [Guids]
   gEfiFileInfoGuid

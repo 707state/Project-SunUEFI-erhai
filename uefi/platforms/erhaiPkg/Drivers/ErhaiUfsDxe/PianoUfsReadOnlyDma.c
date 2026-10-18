@@ -694,10 +694,13 @@ STATIC EFI_STATUS ServiceRead(VOID *Context,UINT8 Lun,EFI_LBA Lba,UINTN Bytes,VO
     Status=ReadScsi("BLOCKIO_READ",mServiceTag++,Lun,PianoUfsReadLba10,(UINT32)(Lba+Offset/mLuns[I].Block),mLuns[I].Block);
     // erhai diagnostic: response fields + first bytes of the data buffer, so a
     // data-less "success" is visible on screen instead of looping silently.
-    {CONST UINT8 *Rr=(CONST UINT8 *)mUcd.Cpu+PIANO_UFS_RESPONSE_OFFSET;
+    // Rate-limited: a 52 MiB kernel read is thousands of calls, and printing
+    // every one through the framebuffer serial stalls the boot.
+    {static UINTN mDiagReads; CONST UINT8 *Rr=(CONST UINT8 *)mUcd.Cpu+PIANO_UFS_RESPONSE_OFFSET;
+     if(mDiagReads<8){++mDiagReads;
      DEBUG((DEBUG_WARN,"ERHAI_BLOCK_READ_DIAG lun=%u lba=%lu status=%r transferred=%u r1=%02x r3=%02x r6=%02x data=%02x %02x %02x %02x\n",
        Lun,(UINT64)Lba,Status,mTransferred,Rr[1],Rr[3],Rr[6],
-       ((CONST UINT8 *)mData.Cpu)[0],((CONST UINT8 *)mData.Cpu)[1],((CONST UINT8 *)mData.Cpu)[2],((CONST UINT8 *)mData.Cpu)[3]));}
+       ((CONST UINT8 *)mData.Cpu)[0],((CONST UINT8 *)mData.Cpu)[1],((CONST UINT8 *)mData.Cpu)[2],((CONST UINT8 *)mData.Cpu)[3]));}}
     if(EFI_ERROR(Status) || mTransferred!=mLuns[I].Block){if(!EFI_ERROR(Status))Status=EFI_BAD_BUFFER_SIZE;break;}
     CopyMem((UINT8 *)Buffer+Offset,mData.Cpu,mLuns[I].Block);
     ++mIoReads[I];mIoBytes[I]+=mLuns[I].Block;
@@ -763,17 +766,13 @@ STATIC EFI_STATUS HaltService(VOID) {
 }
 STATIC PIANO_UFS_SHUTDOWN mShutdown={1,HaltService};
 STATIC VOID EFIAPI PianoUfsExitBoot(EFI_EVENT Event,VOID *Context) {
-  // Halt and retain already-Reserved memory only; no native HAL or Boot
-  // Services calls, allocation/free, protocol teardown, or final-map mutation.
-  if(EFI_ERROR(HaltService()))DmaFaultReset();
-  if(!mInstalled)return;
-  EFI_STATUS Status=PianoDmaRetainForExit(&mTrl);
-  if(!EFI_ERROR(Status))Status=PianoDmaRetainForExit(&mUcd);
-  if(!EFI_ERROR(Status))Status=PianoDmaRetainForExit(&mData);
-  if(!EFI_ERROR(Status))Status=PianoOwnedSmmuRetainForExit(&mContext);
-  if(EFI_ERROR(Status)){DmaFaultReset();return;}
-  mExitRetained=TRUE;
-  DEBUG((DEBUG_WARN,"SUNUEFI_UFS_EBS_RETAIN success=1 efi_map_required=1 raw_dtb_reservation_verified=0 os_handoff_verified=0\n"));
+  // Diagnostic isolation: the previous raw handoff crashed inside the EBS
+  // callback path (Synchronous Exception in the DXE heap). Leave the UFS
+  // controller untouched here; the kernel reinitialises it (or runs with the
+  // UFS DT nodes disabled) and this callback is restored once the handoff is
+  // known-good.
+  (VOID)Event; (VOID)Context;
+  return;
 }
 // Reset-only path never restarts inherited queues and never calls ResetSystem.
 // A successful Prepare intentionally holds CALLBACK across the USB retirement

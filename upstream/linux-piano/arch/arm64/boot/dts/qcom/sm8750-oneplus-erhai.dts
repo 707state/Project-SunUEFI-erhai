@@ -686,3 +686,56 @@
 
 	status = "okay";
 };
+
+/*
+ * Real erhai DRAM map, copied verbatim from the live vendor FDT
+ * (vendor/erhai/board.dtb, /memory reg). ABL fills this for the Android boot;
+ * a raw UEFI handoff must ship it in the DTB instead of growing the property
+ * at runtime: growing it shifts libfdt node offsets, and the following
+ * /chosen writes then land on stale nodes (FDT_ERR_BADOFFSET / wrong
+ * bootargs). The stage-0 boot manager no longer patches /memory.
+ */
+&{/memory@a0000000} {
+	reg = <0x0 0x81960000 0x0 0x000a0000>,
+	      <0x0 0x81a40000 0x0 0x001c0000>,
+	      <0x0 0x81cf4000 0x0 0x0000c000>,
+	      <0x0 0x82460000 0x0 0x00040000>,
+	      <0x0 0xbe360000 0x0 0x16ac3000>,
+	      <0x0 0xd5100000 0x0 0x02f00000>,
+	      <0x0 0xd8600000 0x0 0x00000000>,
+	      <0x0 0xe3720000 0x0 0x1c0e0000>,
+	      <0x8 0x80000000 0x0 0x2f6fd000>,
+	      <0x8 0xb0000000 0x0 0x05500000>,
+	      <0xa 0x00000000 0x2 0x00000000>,
+	      <0x8 0xc0000000 0x1 0x40000000>,
+	      <0x0 0x82800000 0x0 0x18800000>,
+	      <0x0 0xa3e80000 0x0 0x14180000>,
+	      <0x0 0xb81c0000 0x0 0x05770000>;
+};
+
+/* Vendor device-info page inside usable RAM; keep it out of the page allocator. */
+&{/reserved-memory} {
+	device_info_mem: device-info@a4f00000 {
+		reg = <0x0 0xa4f00000 0x0 0x8000>;
+		no-map;
+	};
+};
+
+/*
+ * Gunyah/QHEE hypervisor virtual watchdog. The Android kernel probes
+ * "qcom,gh-watchdog" and the driver disables it; without this node the
+ * mainline kernel leaves the OnePlus ABL-armed Apps Watchdog running and the
+ * SoC resets into QUSB_BULK/EDL a few seconds after the handoff.
+ */
+&{/} {
+	hypervisor {
+		compatible = "qcom,gunyah-hypervisor-1.0", "qcom,gunyah-hypervisor", "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		gh_watchdog: qcom,gh-watchdog {
+			compatible = "qcom,gh-watchdog";
+			interrupts = <0 0 4>;
+		};
+	};
+};

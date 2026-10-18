@@ -27,6 +27,10 @@
 #include <linux/proc_fs.h>
 #include <linux/memblock.h>
 #include <linux/of_fdt.h>
+#include <linux/libfdt.h>
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <linux/sysfb.h>
 #include <linux/efi.h>
 #include <linux/psci.h>
 #include <linux/sched/task.h>
@@ -280,6 +284,8 @@ u64 cpu_logical_map(unsigned int cpu)
 
 void __init __no_sanitize_address setup_arch(char **cmdline_p)
 {
+	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D34;
+
 	setup_initial_init_mm(_text, _etext, _edata, _end);
 
 	*cmdline_p = boot_command_line;
@@ -289,7 +295,77 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 	early_fixmap_init();
 	early_ioremap_init();
 
+	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D35;
 	setup_machine_fdt(__fdt_pointer);
+
+#ifdef CONFIG_EFI_EARLYCON
+	/*
+	 * Raw arm64 boot has no EFI system table, so the EFI stub never fills
+	 * sysfb_primary_display. Populate it from the simple-framebuffer node
+	 * that the stage-0 boot manager adds to /chosen. earlycon=efifb then
+	 * gives us kernel output on the panel from parse_early_param onwards,
+	 * before any driver or fbcon is available.
+	 */
+	{
+		const void *fdt = initial_boot_params;
+		const fdt32_t *reg, *wp, *hp, *sp;
+		int chosen, fb = -1, len;
+		u64 base, size;
+		u32 width, height, stride;
+
+		/*
+		 * of_chosen is only assigned by of_alias_scan() inside
+		 * unflatten_device_tree(), which runs after parse_early_param().
+		 * Walk the flat DTB directly instead: it is already available
+		 * from setup_machine_fdt().
+		 */
+		chosen = fdt_path_offset(fdt, "/chosen");
+		if (chosen >= 0) {
+			int off;
+			fdt_for_each_subnode(off, fdt, chosen) {
+				if (!fdt_node_check_compatible(fdt, off,
+							       "simple-framebuffer")) {
+					fb = off;
+					break;
+				}
+			}
+		}
+		if (fb >= 0) {
+			reg = fdt_getprop(fdt, fb, "reg", &len);
+			wp = fdt_getprop(fdt, fb, "width", &len);
+			hp = fdt_getprop(fdt, fb, "height", &len);
+			sp = fdt_getprop(fdt, fb, "stride", &len);
+		} else {
+			reg = wp = hp = sp = NULL;
+		}
+		if (reg && wp && hp && sp) {
+			struct screen_info *si = &sysfb_primary_display.screen;
+
+			base = ((u64)fdt32_to_cpu(reg[0]) << 32) | fdt32_to_cpu(reg[1]);
+			size = ((u64)fdt32_to_cpu(reg[2]) << 32) | fdt32_to_cpu(reg[3]);
+			width = fdt32_to_cpu(*wp);
+			height = fdt32_to_cpu(*hp);
+			stride = fdt32_to_cpu(*sp);
+
+			memset(si, 0, sizeof(*si));
+			si->orig_video_isVGA = VIDEO_TYPE_EFI;
+			__screen_info_set_lfb_base(si, base);
+			si->lfb_width = width;
+			si->lfb_height = height;
+			si->lfb_linelength = stride;
+			si->lfb_depth = 32;
+			si->red_size = 8;
+			si->green_size = 8;
+			si->blue_size = 8;
+			si->rsvd_size = 8;
+			si->red_pos = 16;
+			si->green_pos = 8;
+			si->blue_pos = 0;
+			si->rsvd_pos = 24;
+			si->lfb_size = size >> 10;
+		}
+	}
+#endif
 
 	/*
 	 * Initialise the static keys early as they may be enabled by the
@@ -297,6 +373,7 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 	 */
 	jump_label_init();
 	parse_early_param();
+	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D36;
 
 	dynamic_scs_init();
 
@@ -332,6 +409,7 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 	arm64_memblock_init();
 
 	paging_init();
+	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D37;
 
 	acpi_table_upgrade();
 
@@ -342,6 +420,7 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 		unflatten_device_tree();
 
 	bootmem_init();
+	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D38;
 
 	kasan_init();
 
@@ -358,6 +437,7 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 
 	init_bootcpu_ops();
 	smp_init_cpus();
+	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D39;
 	smp_build_mpidr_hash();
 
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN

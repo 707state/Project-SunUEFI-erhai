@@ -17,6 +17,7 @@
 #include <Library/PeCoffGetEntryPointLib.h>
 #include <Library/PrintLib.h>
 #include <Library/SerialPortLib.h>
+#include <Library/UefiBootServicesTableLib.h>
 #include <Protocol/DebugSupport.h>
 
 #include <CpuExceptionHelpers.h>
@@ -310,6 +311,63 @@ DumpCpuContext (
   // Prepare a unicode buffer for ConOut, if applicable, in case the buffer
   // gets reused.
   UnicodeSPrintAsciiFormat (UnicodeBuffer, MAX_PRINT_CHARS, Buffer);
+
+  //
+  // Always report the faulting module on ConOut, even in RELEASE builds where
+  // the DEBUG_CODE below is compiled out. Without this the only visible line
+  // is "Synchronous Exception at <addr>", which cannot be attributed to a
+  // loaded driver image during an ExitBootServices callback fault hunt.
+  //
+  {
+    CHAR16  PcLine[MAX_PRINT_CHARS];
+    CHAR8   *Pdb;
+    UINTN   ImageBase;
+    UINTN   PeCoffSizeOfHeader;
+
+    Pdb = GetImageName (SystemContext.SystemContextAArch64->ELR, &ImageBase, &PeCoffSizeOfHeader);
+    if (Pdb != NULL) {
+      UnicodeSPrintAsciiFormat (
+        PcLine, MAX_PRINT_CHARS, "PC 0x%lx (0x%lx+0x%x) [ 0] %a\n",
+        SystemContext.SystemContextAArch64->ELR, ImageBase,
+        (UINT32)(SystemContext.SystemContextAArch64->ELR - ImageBase), BaseName (Pdb));
+    } else {
+      UnicodeSPrintAsciiFormat (PcLine, MAX_PRINT_CHARS, "PC 0x%lx\n",
+        SystemContext.SystemContextAArch64->ELR);
+    }
+    if (gST != NULL && gST->ConOut != NULL) {
+      gST->ConOut->OutputString (gST->ConOut, PcLine);
+      UnicodeSPrintAsciiFormat (
+        PcLine, MAX_PRINT_CHARS, "ESR 0x%lx FAR 0x%lx ELR 0x%lx SPSR 0x%lx\n",
+        SystemContext.SystemContextAArch64->ESR, SystemContext.SystemContextAArch64->FAR,
+        SystemContext.SystemContextAArch64->ELR, SystemContext.SystemContextAArch64->SPSR);
+      gST->ConOut->OutputString (gST->ConOut, PcLine);
+      if ((UINT64 *)SystemContext.SystemContextAArch64->FP != 0) {
+        UINT64  *Fp;
+        UINT64  RootFp[2];
+        UINTN   Idx;
+
+        RootFp[0] = ((UINT64 *)SystemContext.SystemContextAArch64->FP)[0];
+        RootFp[1] = ((UINT64 *)SystemContext.SystemContextAArch64->FP)[1];
+        if (RootFp[1] != SystemContext.SystemContextAArch64->LR) {
+          RootFp[0] = SystemContext.SystemContextAArch64->FP;
+          RootFp[1] = SystemContext.SystemContextAArch64->LR;
+        }
+        for (Fp = RootFp, Idx = 0; Fp[0] != 0 && Idx < 8; Fp = (UINT64 *)Fp[0], Idx++) {
+          Pdb = GetImageName (Fp[1], &ImageBase, &PeCoffSizeOfHeader);
+          if (Pdb != NULL) {
+            UnicodeSPrintAsciiFormat (
+              PcLine, MAX_PRINT_CHARS, "  #%u PC 0x%lx (0x%lx+0x%x) %a\n",
+              (UINT32)Idx, Fp[1], (UINT64)ImageBase,
+              (UINT32)(Fp[1] - ImageBase), BaseName (Pdb));
+          } else {
+            UnicodeSPrintAsciiFormat (PcLine, MAX_PRINT_CHARS, "  #%u PC 0x%lx\n",
+              (UINT32)Idx, Fp[1]);
+          }
+          gST->ConOut->OutputString (gST->ConOut, PcLine);
+        }
+      }
+    }
+  }
 
   DEBUG_CODE_BEGIN ();
   CHAR8   *Pdb, *PrevPdb;

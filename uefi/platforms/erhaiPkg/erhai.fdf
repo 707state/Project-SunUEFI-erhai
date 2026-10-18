@@ -79,7 +79,6 @@ READ_STATUS = TRUE
     INF Binaries/erhai/DALSys/DALSys.inf
     INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
     INF Binaries/erhai/ChipInfo/ChipInfo.inf
-    INF Binaries/erhai/PlatformInfoDxeDriver/PlatformInfoDxeDriver.inf
     INF Binaries/erhai/HALIOMMU/HALIOMMU.inf
     INF Binaries/erhai/ULogDxe/ULogDxe.inf
     INF Binaries/erhai/CmdDbDxe/CmdDbDxe.inf
@@ -131,7 +130,6 @@ READ_STATUS = TRUE
   INF Binaries/erhai/DALSys/DALSys.inf
   INF Binaries/erhai/HWIODxeDriver/HWIODxeDriver.inf
   INF Binaries/erhai/ChipInfo/ChipInfo.inf
-  INF Binaries/erhai/PlatformInfoDxeDriver/PlatformInfoDxeDriver.inf
   INF Binaries/erhai/HALIOMMU/HALIOMMU.inf
   INF Binaries/erhai/ULogDxe/ULogDxe.inf
   INF Binaries/erhai/CmdDbDxe/CmdDbDxe.inf

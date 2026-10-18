@@ -87,6 +87,7 @@
   SerialPortLib
   SynchronizationLib
   UefiLib
+  UefiBootServicesTableLib
   DxeMemoryProtectionHobLib ## MU_CHANGE Use Memory Protection Hob
 
 [LibraryClasses.Ia32, LibraryClasses.X64]
