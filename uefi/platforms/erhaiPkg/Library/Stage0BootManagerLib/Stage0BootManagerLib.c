@@ -238,6 +238,22 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
           Print (L"  fs %u: kernel %lu B at +%lu, dtb %lu B, initrd %lu B\r\n",
                  (UINT32)(I + 1), (UINT64)Bytes, TextOffset, (UINT64)DtbBytes, (UINT64)InitrdBytes);
         }
+        // Allocate the raw handoff regions so CpuDxe maps them RW before we write.
+        // The 'Kernel' memory-map region is Reserved; writing without allocation faults
+        // in the CopyMem loop (observed as a heap-address synchronous exception).
+        {
+          #define RAW_PAGES(SIZE) (EFI_SIZE_TO_PAGES ((UINTN) (SIZE)))
+          EFI_PHYSICAL_ADDRESS KAddr = RAW_KERNEL, DAddr = RAW_DTB, IAddr = RAW_INITRD;
+          EFI_STATUS AStatus = gBS->AllocatePages (AllocateAddress, EfiLoaderData, RAW_PAGES (Bytes), &KAddr);
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  raw kernel alloc %r\r\n", AStatus);
+          if (EFI_ERROR (AStatus)) { Root->Close (Root); continue; }
+          AStatus = gBS->AllocatePages (AllocateAddress, EfiLoaderData, RAW_PAGES (DtbBytes + 0x10000), &DAddr);
+          if (DtbBytes > 0 && EFI_ERROR (AStatus)) { if (gST != NULL && gST->ConOut != NULL) Print(L"  raw dtb alloc %r\r\n", AStatus); }
+          if (InitrdBytes > 0) {
+            AStatus = gBS->AllocatePages (AllocateAddress, EfiLoaderData, RAW_PAGES (InitrdBytes), &IAddr);
+            if (EFI_ERROR (AStatus)) { if (gST != NULL && gST->ConOut != NULL) Print(L"  raw initrd alloc %r\r\n", AStatus); InitrdBytes = 0; }
+          }
+        }
         // Copy to the reserved raw addresses.
         CopyMem ((VOID *)(UINTN)RAW_KERNEL, Kernel, Bytes);
         if (DtbBuf != NULL && DtbBytes >= 40) {
