@@ -15,6 +15,7 @@
   UefiLib
   UefiBootManagerLib
   DevicePathLib
+  FdtLib
   UefiBootServicesTableLib
   UefiRuntimeServicesTableLib
   DebugLib

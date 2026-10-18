@@ -8,6 +8,9 @@
 #include <Protocol/GraphicsOutput.h>
 #include <Library/UefiBootManagerLib.h>
 #include <Library/DevicePathLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/FdtLib.h>
+#include <Library/DevicePathLib.h>
 #include <Protocol/BlockIo.h>
 #include <Protocol/SimpleFileSystem.h>
 #include <Protocol/LoadedImage.h>
@@ -32,6 +35,36 @@ EFI_HANDLE EFIAPI DeviceBootManagerBeforeConsole (
   return NULL;
 }
 
+
+// Read an entire file into a freshly allocated pool buffer.
+STATIC EFI_STATUS ReadWholeFile (EFI_FILE_PROTOCOL *File, VOID **Buffer, UINTN *Bytes)
+{
+  EFI_FILE_INFO *Info = NULL;
+  UINTN InfoSize = 0;
+  EFI_STATUS Status;
+  if (File == NULL || Buffer == NULL || Bytes == NULL) return EFI_INVALID_PARAMETER;
+  *Buffer = NULL; *Bytes = 0;
+  Status = File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, NULL);
+  if (EFI_ERROR (Status) && Status != EFI_BUFFER_TOO_SMALL) return Status;
+  if (InfoSize == 0) return EFI_UNSUPPORTED;
+  Info = AllocatePool (InfoSize);
+  if (Info == NULL) return EFI_OUT_OF_RESOURCES;
+  Status = File->GetInfo (File, &gEfiFileInfoGuid, &InfoSize, Info);
+  if (EFI_ERROR (Status)) { FreePool (Info); return Status; }
+  UINTN Size = (UINTN)Info->FileSize;
+  FreePool (Info);
+  VOID *Buf = AllocatePool (Size);
+  if (Buf == NULL) return EFI_OUT_OF_RESOURCES;
+  Status = File->Read (File, &Size, Buf);
+  if (EFI_ERROR (Status) || Size == 0) { FreePool (Buf); return EFI_ERROR(Status) ? Status : EFI_DEVICE_ERROR; }
+  *Buffer = Buf; *Bytes = Size;
+  return EFI_SUCCESS;
+}
+STATIC EFI_STATUS Root2Open (EFI_FILE_PROTOCOL *Root, EFI_FILE_PROTOCOL **File, CHAR16 *Name)
+{
+  if (Root == NULL || File == NULL) return EFI_INVALID_PARAMETER;
+  return Root->Open (Root, File, Name, EFI_FILE_MODE_READ, 0);
+}
 EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
 {
   EFI_GRAPHICS_OUTPUT_PROTOCOL *Gop = NULL;
@@ -181,35 +214,97 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
           FreePool (Kernel); File->Close (File); Root->Close (Root); continue;
         }
         File->Close (File);
+        // Piano-style raw handoff (PianoRawLinuxBoot.c): copy kernel/dtb/initrd to
+        // fixed reserved addresses, patch the FDT, ExitBootServices, disable the MMU
+        // and jump to the raw arm64 entry (Image + text_offset). StartImage on the
+        // EFI stub faulted on this firmware; the raw path is the proven one.
+        #define RAW_KERNEL 0xA8000000ULL
+        #define RAW_DTB    0xB0000000ULL
+        #define RAW_INITRD 0xB0200000ULL
+        // Read DTB and initramfs from the same volume (paths from kernel cmdline).
+        EFI_FILE_PROTOCOL *DtbFile = NULL, *InitrdFile = NULL;
+        VOID *DtbBuf = NULL, *InitrdBuf = NULL;
+        UINTN DtbBytes = 0, InitrdBytes = 0;
+        if (EFI_ERROR (Root2Open (Root, &DtbFile, L"\\EFI\\BOOT\\erhai.dtb")) ||
+            EFI_ERROR (ReadWholeFile (DtbFile, &DtbBuf, &DtbBytes)) || DtbBuf == NULL) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: DTB read failed\r\n", (UINT32)(I + 1));
+        }
+        if (EFI_ERROR (Root2Open (Root, &InitrdFile, L"\\EFI\\BOOT\\initramfs.cpio.gz")) ||
+            EFI_ERROR (ReadWholeFile (InitrdFile, &InitrdBuf, &InitrdBytes)) || InitrdBuf == NULL) {
+          if (gST != NULL && gST->ConOut != NULL) Print (L"  fs %u: initramfs read failed\r\n", (UINT32)(I + 1));
+        }
+        UINT64 TextOffset = ReadUnaligned64 ((CONST UINT64 *)((CONST UINT8 *)Kernel + 8));
+        if (gST != NULL && gST->ConOut != NULL) {
+          Print (L"  fs %u: kernel %lu B at +%lu, dtb %lu B, initrd %lu B\r\n",
+                 (UINT32)(I + 1), (UINT64)Bytes, TextOffset, (UINT64)DtbBytes, (UINT64)InitrdBytes);
+        }
+        // Copy to the reserved raw addresses.
+        CopyMem ((VOID *)(UINTN)RAW_KERNEL, Kernel, Bytes);
+        if (DtbBuf != NULL && DtbBytes >= 40) {
+          CopyMem ((VOID *)(UINTN)RAW_DTB, DtbBuf, DtbBytes);
+        }
+        if (InitrdBuf != NULL && InitrdBytes > 0) {
+          CopyMem ((VOID *)(UINTN)RAW_INITRD, InitrdBuf, InitrdBytes);
+        }
+        // Patch the FDT: /chosen/bootargs, linux,initrd-start/end.
+        {
+          VOID *Fdt = (VOID *)(UINTN)RAW_DTB;
+          INT32 Node = FdtPathOffset (Fdt, "/chosen");
+          STATIC CONST CHAR8 Cmdline[] =
+            "console=ttyMSM0,115200n8 loglevel=8 ignore_loglevel root=LABEL=sunuefi_root "
+            "rootfstype=ext4 rootwait rw pd_ignore_unused clk_ignore_unused iommu.passthrough=1 panic=15";
+          if (Node >= 0) {
+            FdtSetProp (Fdt, Node, "bootargs", Cmdline, sizeof (Cmdline));
+            if (InitrdBytes > 0) {
+              UINT64 Start = RAW_INITRD, End = RAW_INITRD + InitrdBytes;
+              FdtSetPropU64 (Fdt, Node, "linux,initrd-start", Start);
+              FdtSetPropU64 (Fdt, Node, "linux,initrd-end", End);
+            }
+            // Memory reservation for the kernel itself is via /memory Reg in DTB.
+          }
+        }
         Root->Close (Root);
-        EFI_HANDLE Image = NULL;
-        // ParentImageHandle must be OUR image handle (the DXE core validates it
-        // is a loaded image; passing the filesystem handle returned INVALID_PARAMETER).
-        // The file device path lets the EFI stub resolve dtb=/initrd= relative to
-        // this volume at StartImage time.
-        EFI_DEVICE_PATH_PROTOCOL *KernelPath = FileDevicePath (FsHandles[I], L"\\EFI\\BOOT\\BOOTAA64.EFI");
-        EFI_STATUS LoadStatus = gBS->LoadImage (FALSE, gImageHandle, KernelPath, Kernel, (UINTN)Bytes, &Image);
-        if (KernelPath != NULL) {
-          FreePool (KernelPath);
+        if (gST != NULL && gST->ConOut != NULL) Print (L"Starting kernel (raw)...\r\n");
+        // --- ExitBootServices + MMU-off + naked jump (piano RawEnter) ---
+        {
+          UINTN MapSize = 0, MapKey = 0, DescSize = 0; UINT32 DescVersion = 0;
+          EFI_STATUS MStatus = gBS->GetMemoryMap (&MapSize, NULL, &MapKey, &DescSize, &DescVersion);
+          if (MStatus == EFI_BUFFER_TOO_SMALL && MapSize > 0) {
+            EFI_MEMORY_DESCRIPTOR *Map = AllocatePool (MapSize + 4 * DescSize);
+            if (Map != NULL) {
+              MStatus = gBS->GetMemoryMap (&MapSize, Map, &MapKey, &DescSize, &DescVersion);
+              if (!EFI_ERROR (MStatus)) {
+                MStatus = gBS->ExitBootServices (gImageHandle, MapKey);
+              }
+              // After ExitBootServices no BS calls. On failure fall through to reboot.
+            }
+          }
+          if (gST != NULL && gST->ConOut != NULL) Print (L"EBS %r\r\n", MStatus);
         }
-        if (gST != NULL && gST->ConOut != NULL) {
-          Print (L"ESP kernel: %lu bytes, LoadImage %r\r\n", (UINT64)Bytes, LoadStatus);
+        {
+          // Piano's RawEnter: DAIF masked, disable MMU caches, jump.
+          UINT64 Tree = RAW_DTB;
+          UINT64 Entry = RAW_KERNEL + TextOffset;
+          __asm__ volatile (
+            "mov x4, %[entry]\n"
+            "msr daifset, #15\n"
+            "msr cntv_ctl_el0, xzr\n"
+            "mrs x9, sctlr_el1\n"
+            "mov x10, #5\n"
+            "bic x9, x9, x10\n"
+            "dsb sy\n"
+            "msr sctlr_el1, x9\n"
+            "isb\n"
+            "ic iallu\n"
+            "dsb sy\n"
+            "isb\n"
+            "mov x1, xzr\n"
+            "mov x2, xzr\n"
+            "mov x3, xzr\n"
+            "mov x0, %[tree]\n"
+            "br x4\n"
+            :: [entry] "r" (Entry), [tree] "r" (Tree) : "x0","x1","x2","x3","x4","x9","x10", "memory");
         }
-        if (EFI_ERROR (LoadStatus)) {
-          FreePool (Kernel);
-          continue;
-        }
-        // Set the kernel command line via LoadedImage device path convention:
-        // the EFI stub picks up cmdline from the optional data of the load option.
-        // Simplest supported path: set it via gRT->SetVariable(L"KernelCmdline"...)
-        // is nonstandard; instead the stub reads it from the FDT /chosen/bootargs
-        // which our DTB provides. Boot now.
-        if (gST != NULL && gST->ConOut != NULL) Print (L"Starting kernel...\r\n");
-        EFI_STATUS StartStatus = gBS->StartImage (Image, NULL, NULL);
-        if (gST != NULL && gST->ConOut != NULL) {
-          Print (L"StartImage returned %r\r\n", StartStatus);
-        }
-        FreePool (Kernel);
         break;
       }
       gBS->FreePool (FsHandles);
