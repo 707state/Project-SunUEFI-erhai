@@ -703,7 +703,11 @@
 	      <0x0 0xbe360000 0x0 0x16ac3000>,
 	      <0x0 0xd5100000 0x0 0x02f00000>,
 	      <0x0 0xd8600000 0x0 0x00000000>,
-	      <0x0 0xe3720000 0x0 0x1c0e0000>,
+	      /* Split around the display splash/FB (0xfc800000-0xff2fffff). It is
+	       * not System RAM: including it here makes memremap() WARN and breaks
+	       * simpledrm/efi_earlycon framebuffer remapping. */
+	      <0x0 0xe3720000 0x0 0x090e0000>,
+	      <0x0 0xff300000 0x0 0x00500000>,
 	      <0x8 0x80000000 0x0 0x2f6fd000>,
 	      <0x8 0xb0000000 0x0 0x05500000>,
 	      <0xa 0x00000000 0x2 0x00000000>,
@@ -717,6 +721,11 @@
 &{/reserved-memory} {
 	device_info_mem: device-info@a4f00000 {
 		reg = <0x0 0xa4f00000 0x0 0x8000>;
+		no-map;
+	};
+
+	splash_mem: splash@fc800000 {
+		reg = <0x0 0xfc800000 0x0 0x2b00000>;
 		no-map;
 	};
 };
@@ -738,4 +747,25 @@
 			interrupts = <0 0 4>;
 		};
 	};
+};
+
+/*
+ * The PMR735D borrowed from the piano PMIC set is not populated on erhai:
+ * the qcom-spmi-pmic MFD probe at SPMI USID 0x0a fails with -EIO, and the
+ * failed parent leaves its children without a regmap. Keep it disabled until
+ * the erhai PMIC layout is confirmed from the vendor DTB.
+ */
+&pmr735d_k {
+	status = "disabled";
+};
+
+/*
+ * The inherited piano PMIC set does not match erhai and every probe that
+ * reaches the SPMI arbiter fails its channel-status check (-EIO, WARN in
+ * pmic_arb_check_chnl_status_v1). Keep the whole bus off for the RAM-shell
+ * bring-up; the UEFI leaves display/rails powered, and the initramfs shell
+ * does not need PMIC regulators.
+ */
+&spmi_bus {
+	status = "disabled";
 };

@@ -284,7 +284,6 @@ u64 cpu_logical_map(unsigned int cpu)
 
 void __init __no_sanitize_address setup_arch(char **cmdline_p)
 {
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D34;
 
 	setup_initial_init_mm(_text, _etext, _edata, _end);
 
@@ -294,8 +293,6 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 
 	early_fixmap_init();
 	early_ioremap_init();
-
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D35;
 	setup_machine_fdt(__fdt_pointer);
 
 #ifdef CONFIG_EFI_EARLYCON
@@ -373,7 +370,6 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 	 */
 	jump_label_init();
 	parse_early_param();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D36;
 
 	dynamic_scs_init();
 
@@ -409,7 +405,6 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 	arm64_memblock_init();
 
 	paging_init();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D37;
 
 	acpi_table_upgrade();
 
@@ -420,7 +415,6 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 		unflatten_device_tree();
 
 	bootmem_init();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D38;
 
 	kasan_init();
 
@@ -437,7 +431,6 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
 
 	init_bootcpu_ops();
 	smp_init_cpus();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D39;
 	smp_build_mpidr_hash();
 
 #ifdef CONFIG_ARM64_SW_TTBR0_PAN

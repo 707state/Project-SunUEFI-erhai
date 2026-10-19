@@ -974,8 +974,6 @@ void start_kernel(void)
 	char *command_line;
 	char *after_dashes;
 
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D33;
-
 	set_task_stack_end_magic(&init_task);
 	smp_setup_processor_id();
 	debug_objects_early_init();
@@ -994,7 +992,6 @@ void start_kernel(void)
 	page_address_init();
 	pr_notice("%s", linux_banner);
 	setup_arch(&command_line);
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D3A;
 	mm_core_init_early();
 	/* Static keys and static calls are needed by LSMs */
 	jump_label_init();
@@ -1035,7 +1032,6 @@ void start_kernel(void)
 	sort_main_extable();
 	trap_init();
 	mm_core_init();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D3B;
 	maple_tree_init();
 	poking_init();
 	ftrace_init();
@@ -1049,7 +1045,6 @@ void start_kernel(void)
 	 * time - but meanwhile we still have a functioning scheduler.
 	 */
 	sched_init();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D3C;
 
 	if (WARN(!irqs_disabled(),
 		 "Interrupts were enabled *very* early, fixing it\n"))
@@ -1082,7 +1077,6 @@ void start_kernel(void)
 	/* init some links before init_ISA_irqs() */
 	early_irq_init();
 	init_IRQ();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D3D;
 	tick_init();
 	rcu_init_nohz();
 	timers_init();
@@ -1092,7 +1086,6 @@ void start_kernel(void)
 	vdso_setup_data_pages();
 	timekeeping_init();
 	time_init();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D3E;
 
 	/* This must be after timekeeping is initialized */
 	random_init();
@@ -1117,7 +1110,6 @@ void start_kernel(void)
 	 * this. But we do want output early, in case something goes wrong.
 	 */
 	console_init();
-	*(volatile u32 *)0xFFFF800080000FF0UL = 0x53554D3F;
 	if (panic_later)
 		panic("Too many boot %s vars at `%s'", panic_later,
 		      panic_param);
@@ -1577,7 +1569,6 @@ static int __ref kernel_init(void *unused)
 	rcu_end_inkernel_boot();
 
 	do_sysctl_args();
-
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
 		if (!ret)

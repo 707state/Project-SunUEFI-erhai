@@ -757,7 +757,6 @@ done:
 	}
 	initrd_start = 0;
 	initrd_end = 0;
-
 	init_flush_fput();
 }
 

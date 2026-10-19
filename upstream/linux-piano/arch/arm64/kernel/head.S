@@ -83,17 +83,6 @@
 	 *  x21        primary_entry() .. start_kernel()        FDT pointer passed at boot in x0
 	 */
 SYM_CODE_START(primary_entry)
-	/*
-	 * Stage-0 diagnostic: leave a magic at RAW_KERNEL+0xFF0 (normal DRAM,
-	 * unlike the no-map splash region). The stage-0 boot manager prints it
-	 * before overwriting the kernel slot on the next boot, proving the raw
-	 * jump reached primary_entry. x0-x3 carry the boot protocol arguments.
-	 */
-	mov	x4, #0xA8000000
-	mov	w5, #0x4D31
-	movk	w5, #0x5355, lsl #16
-	str	w5, [x4, #0xFF0]
-
 	bl	record_mmu_state
 	bl	preserve_boot_args
 
@@ -229,16 +218,6 @@ SYM_CODE_END(preserve_boot_args)
  *   x0 = __pa(KERNEL_START)
  */
 SYM_FUNC_START_LOCAL(__primary_switched)
-	/* Stage-0 diagnostic: MMU-on marker in the kernel image page (0xFF0
-	 * maps to physical RAW_KERNEL+0xFF0 because nokaslr and _text is the
-	 * raw load address). */
-	movz	x4, #0x8000, lsl #16
-	movk	x4, #0x8000, lsl #32
-	movk	x4, #0xFFFF, lsl #48
-	mov	w5, #0x4D32
-	movk	w5, #0x5355, lsl #16
-	str	w5, [x4, #0xFF0]
-
 	adr_l	x4, init_task
 	init_cpu_task x4, x5, x6
 

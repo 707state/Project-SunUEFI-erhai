@@ -404,15 +404,6 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
           }
           FreePool (DtbBuf); FreePool (Kernel); Root->Close (Root); continue;
         }
-        // Read the previous kernel's entry marker (RAW_KERNEL+0xFF0) before
-        // copying over that slot. 0x53554D31 means the raw jump reached
-        // primary_entry; zero/garbage means it never executed.
-        {
-          volatile UINT32 *PrevMarker = (volatile UINT32 *)(UINTN)(RAW_KERNEL + 0xFF0);
-          if (gST != NULL && gST->ConOut != NULL) {
-            Print (L"  prev kernel entry marker %08x\r\n", (UINT32)*PrevMarker);
-          }
-        }
         // Piano order: copy the file image, then zero the .bss tail of the span.
         CopyMem ((VOID *)(UINTN)KBase, Kernel, Bytes);
         if (Span > Bytes) {
