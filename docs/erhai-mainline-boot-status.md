@@ -57,6 +57,36 @@ ITS@...: Devices Table too large, reduce ids 32->19
   `populate_rootfs()`/`run_init_process("/init")` 之前或之中。之前的
   prev marker 写入本身曾引入同步异常，已全部移除，后续不再使用。
 
+## 2.1 Interconnect/RPMh probe 连坐（2026-10-19）
+
+最近的 `initcall_debug` 已经把阻塞范围缩到 deferred probe：
+
+```
+arm_enable_runtime_services      returned 0
+calling efi_earlycon_remap_fb    <- 曾在此挂住，已用 initcall_blacklist 跳过
+deferred_probe_initcall
+  probe interconnect-0/1         returned -517 (-EPROBE_DEFER)
+  power-domain-cpu0..7 / cluster0/1  returned 0
+  1500000/1600000/1700000.interconnect ...
+  7e40000.interconnect (lpass_ag_noc)
+  7400000.interconnect (lpass_lpiaon_noc)
+  7420000.interconnect (lpass_lpicx_noc)  <- 第一次挂住
+  1780000.interconnect (mmss_noc)          <- 禁用 LPASS 后挂住
+  1700000.interconnect (aggre2_noc)        <- 禁用 mmss_noc 后挂住
+```
+
+这些 NoC 节点有共同的依赖：
+
+- `lpass_lpiaon_noc` / `lpass_lpicx_noc` / `mmss_noc` / `aggre2_noc`
+  都带 `qcom,bcm-voters = <&apps_bcm_voter>`；
+- `aggre2_noc` 还直接依赖 `rpmhcc RPMH_IPA_CLK`；
+- `apps_bcm_voter` / `rpmhcc` 最终依赖 RPMh → SPMI/PMIC。
+
+当前为了绕开 PMIC 的 `-EIO` 把 `spmi@c400000` 整体禁用，导致 RPMh/
+BCM voter 链无法完成。于是 interconnect 先 `-517`，随后在某个 NoC 的
+probe 中挂死。**逐个禁用 NoC 只是把挂起点推到下一个同链节点**
+（lpass → mmss_noc → aggre2_noc），不是正确方向。
+
 ## 3. 已收集的参照事实
 
 ### Android live DTB / proc/iomem
@@ -176,6 +206,28 @@ earlycon/串口输出，而是靠 pstore/ramoops/logd 记录早期日志。
 
 ## 6. 下一步
 
-优先执行 A（简化 `/init` 并确认 `populate_rootfs`/`run_init_process`）
-和 B（对齐 Android vendor DTB 的 SPMI/PMIC/ITS）。如果 A 证明内核能进
-shell，再逐步恢复 C/D 的 EFI 交接。
+不要继续逐个禁用 NoC。按下面的二选一推进：
+
+### I-1. 修复 SPMI/RPMh/PMIC 依赖链（根因方向）
+
+1. 恢复 `spmi` 总线，按 Android live DT 的 `qcom,spmi@c42d000` 布局
+   修正 `reg`/`bus-id`/`qcom,ee`/`qcom,channel`。
+2. 按 Android 子节点集合修正 PMIC：`pmk8550@0`、`pm8550@1`、
+   `pm8550vs@2-6/9`、`pm8550ve@3/5/6/8`、`pmd802x@4`、`pmih010x@7`、
+   `pm8010@c/d`、`pmr735d@a`。
+3. 解决 `pmic-spmi ... -EIO` 与 `pmic_arb_check_chnl_status_v1`
+   WARN，确认 `apps_bcm_voter`/`rpmhcc` 能 probe。
+4. 再观察 `aggre2_noc`/`mmss_noc`/`lpass` 是否还挂。
+
+### I-2. 整体禁用 interconnect/RPMh 基础设施（先拿 shell）
+
+1. 不再逐个 NoC 操作；直接禁用 ICC/RPMh/bcm-voter 相关支持，例如
+   内核配置关闭 `CONFIG_INTERCONNECT`/`CONFIG_INTERCONNECT_QCOM`，
+   或在 DTB 中统一禁用 `interconnect-0/1`、所有 NoC、`apps_bcm_voter`、
+   `rpmhcc` 相关节点。
+2. 接受消费者得到 `-ENODEV`/空 icc；先验证 `simpledrm`/`fbcon` 和
+   busybox `/init` 能跑。
+3. 确认 shell 后，再按 I-1 恢复 RPMh/SPMI 和外设。
+
+无论走哪条，都不要再用“禁用当前挂住的 NoC”这种方式推进；它只会把
+同一个根因迁移到下一个节点。

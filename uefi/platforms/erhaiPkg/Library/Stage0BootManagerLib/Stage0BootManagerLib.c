@@ -427,7 +427,7 @@ EFI_DEVICE_PATH_PROTOCOL **EFIAPI DeviceBootManagerAfterConsole (VOID)
         // reg replacement last.
         {
           STATIC CONST CHAR8 Cmdline[] =
-            "earlycon=efifb console=tty0 console=ttyMSM0,115200n8 keep_bootcon loglevel=8 ignore_loglevel nokaslr maxcpus=1 "
+            "earlycon=efifb console=tty0 console=ttyMSM0,115200n8 keep_bootcon loglevel=8 ignore_loglevel initcall_debug initcall_blacklist=efi_earlycon_remap_fb nokaslr maxcpus=1 "
             "root=LABEL=sunuefi_root rootfstype=ext4 rootwait rw "
             "pd_ignore_unused clk_ignore_unused regulator_ignore_unused iommu.passthrough=1 panic=15";
 #if ERHAI_DISABLE_UFS

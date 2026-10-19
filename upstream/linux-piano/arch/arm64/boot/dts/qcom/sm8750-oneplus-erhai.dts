@@ -769,3 +769,33 @@
 &spmi_bus {
 	status = "disabled";
 };
+
+/*
+ * LPASS/ADSP and its NoC interconnects are not needed for the RAM shell and
+ * currently hang the kernel after lpass_lpicx_noc probe (device falls into
+ * QUSB_BULK). Keep the whole audio subsystem off until it is brought up
+ * deliberately.
+ */
+&lpass_ag_noc {
+	status = "disabled";
+};
+&lpass_lpiaon_noc {
+	status = "disabled";
+};
+&lpass_lpicx_noc {
+	status = "disabled";
+};
+&lpass_tlmm {
+	status = "disabled";
+};
+&remoteproc_adsp {
+	status = "disabled";
+};
+
+/*
+ * mmss_noc depends on apps_bcm_voter -> RPMh, which is unavailable while the
+ * SPMI bus is disabled. The multimedia NoC is not needed for the RAM shell.
+ */
+&mmss_noc {
+	status = "disabled";
+};
